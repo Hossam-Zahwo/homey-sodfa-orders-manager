@@ -16,4 +16,4 @@ export default async function guard() {
     return new Response(JSON.stringify({error:'Authentication unavailable'}),{status:503,headers:{'content-type':'application/json','cache-control':'no-store'}});
   }
 }
-export const config={path:'/api/*'};
+export const config={path:['/api/*','/.netlify/functions/*']};
