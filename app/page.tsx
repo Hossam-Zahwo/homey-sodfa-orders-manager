@@ -16,9 +16,14 @@ export default function Page(){
  const [auth,setAuth]=useState<boolean|null>(null),[configured,setConfigured]=useState(true),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[brand,setBrand]=useState<Brand>('homey'),[tab,setTab]=useState<Tab>('dashboard'),[orders,setOrders]=useState<Order[]>([]),[customers,setCustomers]=useState<Customer[]>([]),[search,setSearch]=useState(''),[filter,setFilter]=useState('all'),[editing,setEditing]=useState<Order|null>(null),[editCustomer,setEditCustomer]=useState<Customer|null>(null),[busy,setBusy]=useState(false),[err,setErr]=useState(''),[notice,setNotice]=useState(''),[loaded,setLoaded]=useState(false);
  const [period,setPeriod]=useState<'all'|'today'|'week'|'month'|'custom'>('month'),[fromDate,setFromDate]=useState(''),[toDate,setToDate]=useState('');
  const theme=brand==='homey'?{'--primary':'#697b4a','--soft':'#eef1e6'} as React.CSSProperties:{'--primary':'#a46b79','--soft':'#f7ecf0'} as React.CSSProperties;
- useEffect(()=>{let active=true;let subscription:{unsubscribe:()=>void}|undefined;
-  async function verify(){try{const client=browserAuth();const {data:{session}}=await client.auth.getSession();if(!active)return;if(!session){setAuth(false);return}const result=await api('whoami');if(result.ok)setAuth(true);else setAuth(false)}catch(e){if(active){setAuth(false);setErr(e instanceof Error?e.message:'تعذّر التحقق من الدخول')}}}
-  try{const c=browserAuth();const {data}=c.auth.onAuthStateChange(()=>{void verify()});subscription=data.subscription;void verify()}catch(e){setAuth(false);setErr(e instanceof Error?e.message:'Supabase غير مهيأ')}
+ useEffect(()=>{let active=true;
+  async function verifyToken(token?:string){if(!token){if(active)setAuth(false);return}
+   try{const res=await fetch('/api/whoami',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+    if(!active)return;if(res.ok){setAuth(true);setErr('')}else{setAuth(false);setErr(res.status===403?'الإيميل ده مش مصرح له بدخول السيستم':res.status===503?'لسه محتاجين نضبط Supabase وALLOWED_EMAILS على Vercel':'رابط الدخول انتهت صلاحيته')}}catch{if(active){setAuth(false);setErr('تعذر الاتصال بالسيرفر للتحقق من الدخول')}}
+  }
+  let subscription:{unsubscribe:()=>void}|undefined;
+  try{const client=browserAuth();const {data}=client.auth.onAuthStateChange((_event,session)=>{void verifyToken(session?.access_token)});subscription=data.subscription}
+  catch(e){setAuth(false);setErr(e instanceof Error?e.message:'Supabase غير مهيأ')}
   return()=>{active=false;subscription?.unsubscribe()}
  },[]);
  async function reload(){setBusy(true);setErr('');try{const [a,b]=await Promise.all([api('orders'),api('customers')]);setOrders(a.data);setCustomers(b.data);setLoaded(true)}catch(e){setErr((e as Error).message)}finally{setBusy(false)}}
