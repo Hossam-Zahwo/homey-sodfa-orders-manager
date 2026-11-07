@@ -1,47 +1,49 @@
-# HOMEY & SODFA — Orders Manager
+# HOMEY & SODFA Orders Manager
 
-Standalone Next.js 15 + TypeScript / TSX dashboard with server-side Google Sheets storage. This repository is **independent** from the HOMEY and SODFA storefronts.
+An independent Next.js + TypeScript order dashboard. The HOMEY storefront repository and Vercel deployment are unaffected.
 
-## Current functionality
+## Access: exactly two invited people, Netlify Free
 
-- Opens directly on the dashboard without a username/password screen (per owner request).
-- Brand selection: HOMEY (olive-green) and SODFA (rose) with separate per-brand orders and KPIs.
-- Record and edit customer name, phone, alternate phone, governorate, city, address, source, status, payment method, prepaid amount, shipping, discount and multiple products/quantities/prices.
-- Order creation date can be chosen during entry.
-- Brand-scoped totals: orders, confirmed/delivered, total ordered value and delivered value, filtered by today, current week, current month, all-time or custom dates.
-- Customer purchase history: first order date, order count, lifetime ordered total and delivered value. Customer summary draws from saved orders, even if the customer does not have a separate customer record.
-- CSV order export, editable order/customer records, soft deletes, audit sheet, and responsive mobile/desktop layout.
+The dashboard uses **Netlify Identity** and a Netlify Edge guard. It is not protected just by hiding a login screen: every `/api/*` route and direct `/.netlify/functions/*` entry is blocked unless Netlify Identity verifies a user whose email is in `ALLOWED_EMAILS`. If the allowlist is absent, the guard denies all access.
 
-## Required Google Sheets configuration
+**Required site-owner steps** (Netlify site configuration cannot be changed from GitHub):
+1. Netlify → [Orders Manager Identity](https://app.netlify.com/projects/homey-sodfa-orders-manager/identity): **Enable Identity**.
+2. Project configuration → Identity → Registration: set **Invite only**, not Open.
+3. Registration → External providers: enable **Google**.
+4. Identity → Users: invite the two authorized Google-account email addresses.
+5. Netlify → Environment variables: set `ALLOWED_EMAILS` to the exact same two addresses separated by a comma, e.g. `first@example.com,second@example.com`. Scope must include Functions / Edge Functions.
+6. Redeploy production from the independent repo's `main` branch after setting the environment variable.
+7. Keep Netlify **Project visibility = Public** if both invited Identity users are to access the site on Free. **Public project visibility does not grant data access**: Identity and Edge guard gate data requests; an unauthorized visitor sees the sign-in screen. Netlify Private on Free permits only the Netlify team owner, which is unsuitable for two people.
+8. Test with private browsing: unauthenticated `/api/orders` must give 403/503; each invited Google user must access orders; any third Google account must fail.
 
-1. Create a private Google Sheet. Never publish it on the web.
-2. In Google Cloud enable the **Google Sheets API**, then create a service account and its JSON key.
-3. Share the spreadsheet with the service-account **client_email** as Editor.
-4. In **Netlify → Project configuration → Environment variables**, set:
-   - `GOOGLE_SHEET_ID`: the spreadsheet ID in its URL
-   - `GOOGLE_SERVICE_ACCOUNT_EMAIL`: service account client_email
-   - `GOOGLE_PRIVATE_KEY`: the multiline private key from the JSON (store only in secret environment variables, never GitHub)
-5. Deploy, open the dashboard → Settings → **تهيئة Google Sheets** once to create Orders, Customers and Audit tabs. Then start adding orders.
-6. Do not enable `NEXT_PUBLIC_DEMO_MODE=true` for real data: demo mode is read-only.
+Google login is separate from the Netlify **team member** login. No app-specific username/password is created.
 
-## Netlify Free deployment
+## Google Sheets
 
-- Import this **repository** `Hossam-Zahwo/homey-sodfa-orders-manager`, branch `main` (not `HOMLY-`, and not `orders-manager-render`).
-- Framework: Next.js; build command: `npm run build`; publish directory: use Netlify's automatic Next.js handling.
-- `netlify.toml` sets Node 22; no Vercel or Render project is needed.
-- Build and verify the deployment using Netlify's Deploy log.
+The Google spreadsheet has already been prepared with `Orders`, `Customers`, `Audit` tabs:
+https://docs.google.com/spreadsheets/d/1WTIAYqLYQlRaOTmDtM65j2gAmeQx4X2st08qzc3hF5E/edit
 
-## IMPORTANT: Customer data privacy
+Create a Google Cloud project (without enabling Billing), enable Google Sheets API, create a service-account credential, and share only this spreadsheet with its service account address as Editor. Set the following **Netlify secret environment variables**:
+- `GOOGLE_SHEET_ID=1WTIAYqLYQlRaOTmDtM65j2gAmeQx4X2st08qzc3hF5E`
+- `GOOGLE_SERVICE_ACCOUNT_EMAIL` (service account client_email)
+- `GOOGLE_PRIVATE_KEY` (private_key from its JSON key; preserve newlines)
+Never commit the JSON key or paste it in a public chat. You may need to redeploy for variables to apply.
 
-**The current version has no login, by explicit request. Anyone who can reach the public Netlify URL can read, create, edit, and delete order/customer records once Google Sheets is connected.** This is unsafe for real customer addresses/phone numbers. Before entering real records, restrict site access through an appropriate site-wide access-control layer or enable authentication again. A private GitHub repository does **not** protect a public Netlify website. Do not share the live link publicly until access is restricted.
+After sign-in and secure connectivity, use the dashboard Settings → **تهيئة Google Sheets** if the tabs are missing. Enter one fake test order, verify in Sheets, then remove it.
 
-## Local development
+## Features
 
-```bash
-npm install
-npm run typecheck
-npm run build
-npm run dev
-```
+- HOMEY olive and SODFA rose themes, independent brand-scoped orders/customers.
+- Orders: customer names/phones/address, governorate, creation date, products/quantities/prices, shipping, discounts, prepaid, statuses.
+- Reports: daily, weekly, monthly, custom date filters; order count, gross order totals, delivered revenue.
+- Customer history: first order date, lifetime orders, lifetime order/delivered totals.
+- CSV exports, mobile/desktop responsive interface.
 
-Do not commit .env files, service account keys or customer data.
+## Deployment
+
+GitHub: https://github.com/Hossam-Zahwo/homey-sodfa-orders-manager (branch `main`).
+Netlify: https://app.netlify.com/projects/homey-sodfa-orders-manager/deploys
+
+Netlify Free and Identity are available at no additional cost within free usage limits. Do not upgrade, add a billing card, or activate paid cloud resources.
+
+**Important:** Access depends on Netlify Identity being enabled and invited users being configured; committing the code alone does not activate Identity. Until server-side access has been verified and Sheets secrets installed, **do not enter real customer data**.
