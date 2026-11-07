@@ -1,2 +1,2 @@
-import {demoMode,demoWriteResponse} from '@/lib/demo';
-import {NextResponse} from 'next/server';import {authed} from '@/lib/session';import {setupSheets} from '@/lib/sheets';export const runtime='nodejs';export async function POST(){if(demoMode())return demoWriteResponse();try{await setupSheets();return NextResponse.json({ok:true})}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Setup failed'},{status:503})}}
+import {NextResponse} from 'next/server';
+export async function POST(){return NextResponse.json({error:'Google Sheets integration was removed; run supabase/schema.sql on the new Supabase project.'},{status:410})}
