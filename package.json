@@ -9,12 +9,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "google-auth-library": "10.4.0",
     "lucide-react": "0.468.0",
     "next": "^15.5.29",
     "react": "19.1.1",
     "react-dom": "19.1.1",
-    "@netlify/identity": "^2.0.1"
+    "@supabase/supabase-js": "2.119.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
