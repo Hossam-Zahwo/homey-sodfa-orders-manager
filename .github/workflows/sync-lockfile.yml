@@ -1,7 +1,7 @@
 name: Sync npm lockfile
 on:
   push:
-    branches: [main, supabase-orders-migration]
+    branches: [main, neon-live-backend]
     paths:
       - package.json
       - .github/workflows/sync-lockfile.yml
