@@ -40,7 +40,7 @@ npm run build
 npm run dev
 ```
 
-Do not merge or deploy this branch until a **new Supabase project has been created**, the SQL has been applied, and the Vercel environment variables are configured. Check CI and live login as the two real authorized accounts; a third account must receive 403. Test data only first.
+The application can be deployed safely **without Supabase credentials**: it shows a clear setup-required screen and cannot expose or save customer data. It is NOT operational until a brand-new Supabase project is created, SQL is applied, and the Vercel environment variables are configured. Then test login with the two authorized accounts; a third account must receive 403. Only use fake test data first.
 
 ## Cost warning
 
