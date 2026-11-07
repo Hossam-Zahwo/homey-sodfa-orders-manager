@@ -1,42 +1,84 @@
+import {neon} from '@neondatabase/serverless';
 import type {Order,Customer} from './types';
-const ordersFields:{[k:string]:string}={createdAt:'created_at',updatedAt:'updated_at',customerName:'customer_name',alternatePhone:'alternate_phone',paymentMethod:'payment_method',assignedTo:'assigned_to',deletedAt:'deleted_at'};
-const customerFields:{[k:string]:string}={alternatePhone:'alternate_phone',createdAt:'created_at',updatedAt:'updated_at',deletedAt:'deleted_at'};
-function toDb(v:Record<string,unknown>,mapping:Record<string,string>){return Object.fromEntries(Object.entries(v).map(([k,value])=>[mapping[k]||k,value]));}
-function fromDb<T>(v:Record<string,unknown>,mapping:Record<string,string>):T{const inverse=Object.fromEntries(Object.entries(mapping).map(([k,value])=>[value,k]));const out=Object.fromEntries(Object.entries(v).map(([k,value])=>[inverse[k]||k,value]));for(const key of ['prepaid','shipping','discount','version'])if(key in out)out[key]=Number(out[key]||0);return out as T}
-async function db(table:string,method='GET',filter='',payload?:Record<string,unknown>,extra:Record<string,string>={}):Promise<any>{
- const url=process.env.SUPABASE_URL,secret=process.env.SUPABASE_SERVICE_ROLE_KEY;
- if(!url||!secret)throw new Error('Supabase database is not configured');
- const response=await fetch(url+'/rest/v1/'+table+(filter?'?'+filter:''),{method,headers:{apikey:secret,Authorization:'Bearer '+secret,'Content-Type':'application/json',Prefer:'return=representation',...extra},body:payload?JSON.stringify(payload):undefined,cache:'no-store'});
- if(!response.ok){const body=await response.text();throw new Error('Database error '+response.status+': '+body.slice(0,160))}
- return response.status===204?[]:response.json();
+
+function sql(){
+ const url=process.env.DATABASE_URL;
+ if(!url)throw new Error('Neon database is not configured');
+ return neon(url);
 }
-export async function getOrders():Promise<Order[]>{return (await db('orders','GET','select=*&deleted_at=is.null&order=created_at.desc')).map((x:Record<string,unknown>)=>fromDb<Order>(x,ordersFields))}
+const orderFields:Record<string,string>={createdAt:'created_at',updatedAt:'updated_at',customerName:'customer_name',alternatePhone:'alternate_phone',paymentMethod:'payment_method',assignedTo:'assigned_to',deletedAt:'deleted_at'};
+const customerFields:Record<string,string>={alternatePhone:'alternate_phone',createdAt:'created_at',updatedAt:'updated_at',deletedAt:'deleted_at'};
+function fromDb<T>(row:Record<string,unknown>,fields:Record<string,string>):T{
+ const reverse=Object.fromEntries(Object.entries(fields).map(([a,b])=>[b,a]));
+ const obj=Object.fromEntries(Object.entries(row).map(([k,v])=>[reverse[k]||k,v]));
+ for(const k of ['prepaid','shipping','discount','version'])if(k in obj)obj[k]=Number(obj[k]??0);
+ for(const k of ['createdAt','updatedAt','deletedAt'])if(obj[k] instanceof Date)obj[k]=(obj[k] as Date).toISOString();
+ if('deletedAt' in obj && obj.deletedAt==null)obj.deletedAt='';
+ return obj as T;
+}
+const order=(row:Record<string,unknown>)=>fromDb<Order>(row,orderFields);
+const customer=(row:Record<string,unknown>)=>fromDb<Customer>(row,customerFields);
+const orderDate=(v:string)=>/^\d{4}-\d{2}-\d{2}$/.test(v)?v+'T12:00:00+02:00':new Date(v).toISOString();
+
+export async function getOrders():Promise<Order[]>{
+ const rows=await sql()`SELECT * FROM public.orders WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT 5000`;
+ return rows.map(order);
+}
 export async function saveOrder(input:Order):Promise<Order>{
- const now=new Date().toISOString();
+ const db=sql(),date=orderDate(input.createdAt);
  if(input.id){
-  const patch=toDb({...input,version:input.version+1,updatedAt:now},ordersFields);delete patch.id;delete patch.created_at;
-  const rows=await db('orders','PATCH','id=eq.'+encodeURIComponent(input.id)+'&version=eq.'+input.version+'&deleted_at=is.null',patch);
+  const rows=await db`UPDATE public.orders SET
+   brand=${input.brand},created_at=${date}::timestamptz,updated_at=now(),
+   customer_name=${input.customerName.trim()},phone=${input.phone},alternate_phone=${input.alternatePhone||''},
+   governorate=${input.governorate||''},city=${input.city||''},address=${input.address||''},
+   source=${input.source||''},payment_method=${input.paymentMethod||''},
+   prepaid=${input.prepaid},shipping=${input.shipping},discount=${input.discount},
+   items=${JSON.stringify(input.items)}::jsonb,status=${input.status},
+   notes=${input.notes||''},assigned_to=${input.assignedTo||''},version=version+1
+   WHERE id=${input.id}::uuid AND version=${input.version} AND deleted_at IS NULL RETURNING *`;
   if(!rows.length)throw new Error('CONFLICT');
-  return fromDb<Order>(rows[0],ordersFields);
+  return order(rows[0]);
  }
- const date=/^\d{4}-\d{2}-\d{2}$/.test(input.createdAt)?input.createdAt:now;
- const record=toDb({...input,createdAt:date,updatedAt:now,version:1},ordersFields);delete record.id;delete record.deleted_at;
- const rows=await db('orders','POST','',record);return fromDb<Order>(rows[0],ordersFields);
+ const rows=await db`INSERT INTO public.orders
+  (brand,created_at,customer_name,phone,alternate_phone,governorate,city,address,source,payment_method,
+   prepaid,shipping,discount,items,status,notes,assigned_to)
+  VALUES (${input.brand},${date}::timestamptz,${input.customerName.trim()},${input.phone},${input.alternatePhone||''},
+  ${input.governorate||''},${input.city||''},${input.address||''},${input.source||''},${input.paymentMethod||''},
+  ${input.prepaid},${input.shipping},${input.discount},${JSON.stringify(input.items)}::jsonb,${input.status},
+  ${input.notes||''},${input.assignedTo||''}) RETURNING *`;
+ return order(rows[0]);
 }
 export async function removeOrder(id:string,version:number):Promise<Order>{
- const rows=await db('orders','PATCH','id=eq.'+encodeURIComponent(id)+'&version=eq.'+version+'&deleted_at=is.null',{deleted_at:new Date().toISOString(),version:version+1});
- if(!rows.length)throw new Error('CONFLICT');return fromDb<Order>(rows[0],ordersFields);
+ const rows=await sql()`UPDATE public.orders SET deleted_at=now(),updated_at=now(),version=version+1
+  WHERE id=${id}::uuid AND version=${version} AND deleted_at IS NULL RETURNING *`;
+ if(!rows.length)throw new Error('CONFLICT');
+ return order(rows[0]);
 }
-export async function getCustomers():Promise<Customer[]>{return (await db('customers','GET','select=*&deleted_at=is.null&order=created_at.desc')).map((x:Record<string,unknown>)=>fromDb<Customer>(x,customerFields))}
+export async function getCustomers():Promise<Customer[]>{
+ const rows=await sql()`SELECT * FROM public.customers WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT 5000`;
+ return rows.map(customer);
+}
 export async function saveCustomer(input:Customer):Promise<Customer>{
- const now=new Date().toISOString();
- if(input.id){const patch=toDb({...input,updatedAt:now},customerFields);delete patch.id;delete patch.created_at;
-  const rows=await db('customers','PATCH','id=eq.'+encodeURIComponent(input.id)+'&deleted_at=is.null',patch);if(!rows.length)throw new Error('NOT_FOUND');return fromDb<Customer>(rows[0],customerFields);
+ const db=sql();
+ if(input.id){
+  const rows=await db`UPDATE public.customers SET brand=${input.brand},name=${input.name.trim()},
+   phone=${input.phone},alternate_phone=${input.alternatePhone||''},governorate=${input.governorate||''},
+   city=${input.city||''},address=${input.address||''},notes=${input.notes||''},updated_at=now()
+   WHERE id=${input.id}::uuid AND deleted_at IS NULL RETURNING *`;
+  if(!rows.length)throw new Error('NOT_FOUND');
+  return customer(rows[0]);
  }
- const record=toDb({...input,createdAt:now,updatedAt:now},customerFields);delete record.id;delete record.deleted_at;
- const rows=await db('customers','POST','',record);return fromDb<Customer>(rows[0],customerFields);
+ const rows=await db`INSERT INTO public.customers(brand,name,phone,alternate_phone,governorate,city,address,notes)
+ VALUES (${input.brand},${input.name.trim()},${input.phone},${input.alternatePhone||''},${input.governorate||''},
+ ${input.city||''},${input.address||''},${input.notes||''}) RETURNING *`;
+ return customer(rows[0]);
 }
-export async function removeCustomer(id:string){const rows=await db('customers','PATCH','id=eq.'+encodeURIComponent(id)+'&deleted_at=is.null',{deleted_at:new Date().toISOString()});if(!rows.length)throw new Error('NOT_FOUND')}
+export async function removeCustomer(id:string){
+ const rows=await sql()`UPDATE public.customers SET deleted_at=now(),updated_at=now()
+ WHERE id=${id}::uuid AND deleted_at IS NULL RETURNING id`;
+ if(!rows.length)throw new Error('NOT_FOUND');
+}
 export async function audit(action:string,entity:string,entityId:string,brand:string,details:string,actor='authorized-user'){
- await db('audit_log','POST','',{actor,action,entity,entity_id:entityId,brand,details});
+ await sql()`INSERT INTO public.audit_log(actor,action,entity,entity_id,brand,details)
+ VALUES (${actor},${action},${entity},${entityId},${brand},${details})`;
 }
