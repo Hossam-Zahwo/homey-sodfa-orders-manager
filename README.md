@@ -1,49 +1,49 @@
 # HOMEY & SODFA Orders Manager
 
-An independent Next.js + TypeScript order dashboard. The HOMEY storefront repository and Vercel deployment are unaffected.
+**Independent order management site**, Next.js + TypeScript + **Supabase PostgreSQL and Supabase Auth**, deployed on **Vercel**. The HOMEY storefront, its repository, and its databases are never modified.
 
-## Access: exactly two invited people, Netlify Free
+## New database (separate from HOMEY)
 
-The dashboard uses **Netlify Identity** and a Netlify Edge guard. It is not protected just by hiding a login screen: every `/api/*` route and direct `/.netlify/functions/*` entry is blocked unless Netlify Identity verifies a user whose email is in `ALLOWED_EMAILS`. If the allowlist is absent, the guard denies all access.
+Create a **brand-new Supabase project** named `homey-sodfa-orders-manager` in the chosen account/organization. Do not use either of the existing HOMEY databases.
 
-**Required site-owner steps** (Netlify site configuration cannot be changed from GitHub):
-1. Netlify → [Orders Manager Identity](https://app.netlify.com/projects/homey-sodfa-orders-manager/identity): **Enable Identity**.
-2. Project configuration → Identity → Registration: set **Invite only**, not Open.
-3. Registration → External providers: enable **Google**.
-4. Identity → Users: invite the two authorized Google-account email addresses.
-5. Netlify → Environment variables: set `ALLOWED_EMAILS` to the exact same two addresses separated by a comma, e.g. `first@example.com,second@example.com`. Scope must include Functions / Edge Functions.
-6. Redeploy production from the independent repo's `main` branch after setting the environment variable.
-7. Keep Netlify **Project visibility = Public** if both invited Identity users are to access the site on Free. **Public project visibility does not grant data access**: Identity and Edge guard gate data requests; an unauthorized visitor sees the sign-in screen. Netlify Private on Free permits only the Netlify team owner, which is unsuitable for two people.
-8. Test with private browsing: unauthenticated `/api/orders` must give 403/503; each invited Google user must access orders; any third Google account must fail.
+Run the SQL in [supabase/schema.sql](supabase/schema.sql) in **the new project's** SQL Editor once. This adds `orders`, `customers` and `audit_log`. Row Level Security is enabled, and anonymous/authenticated roles have no table access. The Next.js API (server only) accesses the tables with the secret service-role key **after** checking the caller's verified Supabase Auth session and email allowlist.
 
-Google login is separate from the Netlify **team member** login. No app-specific username/password is created.
+## Vercel environment variables
 
-## Google Sheets
+Only on the **independent Orders Manager Vercel project** (not the HOMEY project):
 
-The Google spreadsheet has already been prepared with `Orders`, `Customers`, `Audit` tabs:
-https://docs.google.com/spreadsheets/d/1WTIAYqLYQlRaOTmDtM65j2gAmeQx4X2st08qzc3hF5E/edit
+- `NEXT_PUBLIC_SUPABASE_URL` = the new project's URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` = new project's public anon/publishable key
+- `SUPABASE_URL` = same project URL (server-only)
+- `SUPABASE_SERVICE_ROLE_KEY` = new project's **secret** service role key; never `NEXT_PUBLIC_`
+- `ALLOWED_EMAILS` = two exact emails separated by a comma
 
-Create a Google Cloud project (without enabling Billing), enable Google Sheets API, create a service-account credential, and share only this spreadsheet with its service account address as Editor. Set the following **Netlify secret environment variables**:
-- `GOOGLE_SHEET_ID=1WTIAYqLYQlRaOTmDtM65j2gAmeQx4X2st08qzc3hF5E`
-- `GOOGLE_SERVICE_ACCOUNT_EMAIL` (service account client_email)
-- `GOOGLE_PRIVATE_KEY` (private_key from its JSON key; preserve newlines)
-Never commit the JSON key or paste it in a public chat. You may need to redeploy for variables to apply.
+The dashboard uses Supabase Auth **email magic-link/OTP** sign-in: no app-specific password. Go to Supabase Authentication → URL Configuration, set the Site URL to the correct Vercel production domain, and add that URL to Redirect URLs. Enable Email provider. Only the two allowlisted, email-verified addresses can read/change orders. Consider disabling public signup and inviting only the authorized users once email delivery is confirmed; the backend allowlist is mandatory regardless.
 
-After sign-in and secure connectivity, use the dashboard Settings → **تهيئة Google Sheets** if the tabs are missing. Enter one fake test order, verify in Sheets, then remove it.
+**Keep service-role key out of GitHub, chats, screenshots, and browser code.** A private GitHub repository alone is not access control.
 
-## Features
+## Order workflow and analytics
 
-- HOMEY olive and SODFA rose themes, independent brand-scoped orders/customers.
-- Orders: customer names/phones/address, governorate, creation date, products/quantities/prices, shipping, discounts, prepaid, statuses.
-- Reports: daily, weekly, monthly, custom date filters; order count, gross order totals, delivered revenue.
-- Customer history: first order date, lifetime orders, lifetime order/delivered totals.
-- CSV exports, mobile/desktop responsive interface.
+- Orders: brand HOMEY/SODFA, date, customer name/phone/address/governorate, multiple line items, prices, shipping, discounts, partial payment, status, notes and ownership.
+- Reports: selected brand's orders and sales by day/week/month/custom dates.
+- Customers: first order date, lifetime order count and lifetime order/delivered value.
+- Export CSV. Soft-delete data remains recoverable by admin.
+- Responsive UI for mobile and desktop.
+- Direct access via session for the two email accounts only.
 
-## Deployment
+## Develop and deploy
 
-GitHub: https://github.com/Hossam-Zahwo/homey-sodfa-orders-manager (branch `main`).
-Netlify: https://app.netlify.com/projects/homey-sodfa-orders-manager/deploys
+```bash
+npm install
+npm run typecheck
+npm run build
+npm run dev
+```
 
-Netlify Free and Identity are available at no additional cost within free usage limits. Do not upgrade, add a billing card, or activate paid cloud resources.
+The application can be deployed safely **without Supabase credentials**: it shows a clear setup-required screen and cannot expose or save customer data. It is NOT operational until a brand-new Supabase project is created, SQL is applied, and the Vercel environment variables are configured. Then test login with the two authorized accounts; a third account must receive 403. Only use fake test data first.
 
-**Important:** Access depends on Netlify Identity being enabled and invited users being configured; committing the code alone does not activate Identity. Until server-side access has been verified and Sheets secrets installed, **do not enter real customer data**.
+## Cost warning
+
+Supabase Free permits two active free projects **across organizations owned/administered by the same account**; projects may pause for inactivity. The person choosing the organization must make sure a new Free project can be created **without a nonzero charge**. Vercel Hobby may restrict business use; check your plan terms. Do not enable billing or paid resources automatically.
+
+Google Sheets and Netlify Identity are **not used** by this migration.

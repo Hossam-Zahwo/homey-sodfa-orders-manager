@@ -1,5 +1,5 @@
 import {NextResponse} from 'next/server';
+import {requireAccess} from '@/lib/access';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
-// Netlify Edge guard validates Identity and ALLOWED_EMAILS on /api/* before this route.
-export async function GET(){return NextResponse.json({ok:true},{headers:{'Cache-Control':'no-store'}})}
+export async function GET(r:Request){const blocked=await requireAccess(r);if(blocked)return blocked;return NextResponse.json({ok:true},{headers:{'Cache-Control':'no-store'}})}
