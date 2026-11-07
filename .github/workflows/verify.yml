@@ -7,6 +7,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      NEON_AUTH_BASE_URL: https://test.neonauth.invalid/orders_manager/auth
+      NEON_AUTH_COOKIE_SECRET: only-for-github-ci-do-not-use-in-production-0123456789
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

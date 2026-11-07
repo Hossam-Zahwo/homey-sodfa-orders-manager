@@ -1,17 +1,17 @@
 import {NextResponse} from 'next/server';
-export const runtime='nodejs';
-export async function requireAccess(request:Request):Promise<NextResponse|null>{
- const url=process.env.SUPABASE_URL||process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.SUPABASE_ANON_KEY||process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
- const allowed=(process.env.ALLOWED_EMAILS||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
- if(!url||!key||!allowed.length)return NextResponse.json({error:'Supabase Auth or allowlist is not configured'},{status:503});
- const token=request.headers.get('Authorization')?.match(/^Bearer (.+)$/i)?.[1];
- if(!token)return NextResponse.json({error:'Sign in required'},{status:401});
+import {auth} from '@/lib/auth/server';
+
+// Every data endpoint checks a verified Neon Auth cookie AND the explicit email allowlist.
+// Missing ALLOWED_EMAILS fails closed; no self-signup or anonymous data access.
+export async function requireAccess(_request:Request):Promise<NextResponse|null>{
+ const allow=(process.env.ALLOWED_EMAILS||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
+ if(!allow.length||!process.env.NEON_AUTH_BASE_URL||!process.env.DATABASE_URL)
+  return NextResponse.json({error:'Dashboard access has not been enabled for the two authorized emails'},{status:503});
  try{
-  const response=await fetch(url+'/auth/v1/user',{headers:{apikey:key,Authorization:'Bearer '+token},cache:'no-store'});
-  if(!response.ok)return NextResponse.json({error:'Invalid login session'},{status:401});
-  const user=await response.json() as {email?:string;email_confirmed_at?:string};
-  if(!user.email||!allowed.includes(user.email.toLowerCase())||!user.email_confirmed_at)
-   return NextResponse.json({error:'Your email is not on the authorized team list'},{status:403});
+  const {data,error}=await auth.getSession();
+  if(error||!data?.user?.email)return NextResponse.json({error:'Sign in required'},{status:401});
+  if(!data.user.emailVerified||!allow.includes(data.user.email.toLowerCase()))
+   return NextResponse.json({error:'This account is not on the authorized list'},{status:403});
   return null;
- }catch{return NextResponse.json({error:'Authentication verification unavailable'},{status:503})}
+ }catch{return NextResponse.json({error:'Could not validate your login session'},{status:401})}
 }
