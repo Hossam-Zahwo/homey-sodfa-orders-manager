@@ -33,15 +33,15 @@ export default function Page(){
  },[]);
  async function reload(){setBusy(true);setErr('');try{const [a,b]=await Promise.all([api('orders'),api('customers')]);setOrders(a.data);setCustomers(b.data);setLoaded(true)}catch(e){setErr((e as Error).message)}finally{setBusy(false)}}
  useEffect(()=>{if(auth)void reload()},[auth]);
- const inPeriod=(date:string)=>{const d=date.slice(0,10),now=new Date(),today=new Date(now.getFullYear(),now.getMonth(),now.getDate());if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(d))return false;const dt=new Date(d+'T12:00:00');if(Number.isNaN(dt.getTime()))return false;if(period==='all')return true;if(period==='today')return dt.toDateString()===today.toDateString();if(period==='week'){const start=new Date(today);start.setDate(today.getDate()-((today.getDay()+6)%7));return dt>=start&&dt<=new Date(today.getTime()+86400000)}if(period==='month')return dt.getFullYear()===today.getFullYear()&&dt.getMonth()===today.getMonth();return (!fromDate||d>=fromDate)&&(!toDate||d<=toDate)};
+ const inPeriod=(date:string)=>{const d=date.slice(0,10),now=new Date(),today=new Date(now.getFullYear(),now.getMonth(),now.getDate());if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return false;const dt=new Date(d+'T12:00:00');if(Number.isNaN(dt.getTime()))return false;if(period==='all')return true;if(period==='today')return dt.toDateString()===today.toDateString();if(period==='week'){const start=new Date(today);start.setDate(today.getDate()-((today.getDay()+6)%7));return dt>=start&&dt<=new Date(today.getTime()+86400000)}if(period==='month')return dt.getFullYear()===today.getFullYear()&&dt.getMonth()===today.getMonth();return (!fromDate||d>=fromDate)&&(!toDate||d<=toDate)};
  const periodOrders=orders.filter(o=>o.brand===brand&&inPeriod(o.createdAt));
  const visible=periodOrders.filter(o=>(filter==='all'||o.status===filter)&&[o.customerName,o.phone,o.id,o.address,o.items.map(i=>i.name).join(' ')].join(' ').toLowerCase().includes(search.toLowerCase()));
  const allBrand=periodOrders;
  const allCustomerProfiles=new Map<string,Customer>();
- customers.filter(c=>c.brand===brand).forEach(c=>allCustomerProfiles.set(c.phone.replace(/\\D/g,''),c));
- orders.filter(o=>o.brand===brand).forEach(o=>{const key=o.phone.replace(/\\D/g,'');if(!allCustomerProfiles.has(key))allCustomerProfiles.set(key,{id:'',brand,name:o.customerName,phone:o.phone,alternatePhone:o.alternatePhone,governorate:o.governorate,city:o.city,address:o.address,notes:'',createdAt:o.createdAt,updatedAt:o.updatedAt,deletedAt:''})});
+ customers.filter(c=>c.brand===brand).forEach(c=>allCustomerProfiles.set(c.phone.replace(/\D/g,''),c));
+ orders.filter(o=>o.brand===brand).forEach(o=>{const key=o.phone.replace(/\D/g,'');if(!allCustomerProfiles.has(key))allCustomerProfiles.set(key,{id:'',brand,name:o.customerName,phone:o.phone,alternatePhone:o.alternatePhone,governorate:o.governorate,city:o.city,address:o.address,notes:'',createdAt:o.createdAt,updatedAt:o.updatedAt,deletedAt:''})});
  const activeCustomers=[...allCustomerProfiles.values()].filter(c=>[c.name,c.phone,c.city].join(' ').toLowerCase().includes(search.toLowerCase()));
- const customerOrders=(phone:string)=>orders.filter(o=>o.brand===brand&&o.phone.replace(/\\D/g,'')===phone.replace(/\\D/g,''));
+ const customerOrders=(phone:string)=>orders.filter(o=>o.brand===brand&&o.phone.replace(/\D/g,'')===phone.replace(/\D/g,''));
  const periodLabel:Record<typeof period,string>={all:'كل الفترات',today:'اليوم',week:'الأسبوع الحالي',month:'الشهر الحالي',custom:'فترة مخصصة'};
  const counts={all:allBrand.length,new:allBrand.filter(o=>o.status==='new').length,confirmed:allBrand.filter(o=>o.status==='confirmed').length,delivered:allBrand.filter(o=>o.status==='delivered').length};
  const revenue=allBrand.filter(o=>o.status==='delivered').reduce((s,o)=>s+totalOf(o),0);
