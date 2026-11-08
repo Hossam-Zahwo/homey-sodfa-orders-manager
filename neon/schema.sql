@@ -43,3 +43,17 @@ CREATE INDEX IF NOT EXISTS orders_brand_created_idx ON public.orders(brand,creat
 CREATE INDEX IF NOT EXISTS orders_phone_idx ON public.orders(brand,phone) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS customers_brand_phone_idx ON public.customers(brand,phone) WHERE deleted_at IS NULL;
 -- Never add public web access or browser-facing DB credentials.
+
+-- Private staff login: provision password_hash only using an approved admin flow.
+-- No plaintext credentials belong in this migration or GitHub.
+CREATE TABLE IF NOT EXISTS public.staff_users (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ email text NOT NULL UNIQUE,
+ password_hash text NOT NULL,
+ display_name text NOT NULL DEFAULT '',
+ is_active boolean NOT NULL DEFAULT true,
+ failed_attempts integer NOT NULL DEFAULT 0,
+ locked_until timestamptz,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ updated_at timestamptz NOT NULL DEFAULT now()
+);
