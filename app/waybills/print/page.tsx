@@ -6,6 +6,8 @@ import {WaybillPrintSheets} from '@/components/waybill-print-sheets';
 export default function BatchWaybillPrint(){
  const [waybills,setWaybills]=useState<Waybill[]>([]);
  const [perPage,setPerPage]=useState<3|4>(4);
+ const [printDate,setPrintDate]=useState('');
+ useEffect(()=>{const now=new Date();const local=new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,10);setPrintDate(local)},[]);
  const [error,setError]=useState('');
  const [loading,setLoading]=useState(true);
  useEffect(()=>{
@@ -34,6 +36,9 @@ export default function BatchWaybillPrint(){
     <a href="/">الرجوع لإدارة الطلبات</a>
     <div className="shipping-print-controls">
      <span>عدد البوالص: {waybills.length}</span>
+     <label className="shipping-print-date-control">تاريخ الطباعة
+      <input type="date" value={printDate} onChange={e=>setPrintDate(e.target.value)} aria-label="تاريخ الطباعة على البوليصة"/>
+     </label>
      <label>عدد البوالص في ورقة A4
       <select value={perPage} onChange={e=>setPerPage(Number(e.target.value) as 3|4)}>
        <option value={4}>4 بوالص / ورقة</option>
@@ -44,6 +49,6 @@ export default function BatchWaybillPrint(){
     </div>
    </div>
    <p className="shipping-print-help">كل بوليصة فيها بيانات العميل والمطلوب تحصيله فقط. الخطوط الفاصلة بتحدد مكان القص على ورق A4.</p>
-   <WaybillPrintSheets waybills={waybills} perPage={perPage}/>
+   <WaybillPrintSheets waybills={waybills} perPage={perPage} printDate={printDate}/>
  </main>;
 }
