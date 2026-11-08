@@ -294,3 +294,138 @@ body:has(.shipping-print-view),body:has(.shipping-print-state){background:#e8ede
  .shipping-label-print-date{print-color-adjust:exact;-webkit-print-color-adjust:exact}
  .shipping-label-note{print-color-adjust:exact;-webkit-print-color-adjust:exact}
 }
+
+
+/* Original HOMEY olive logo — keep the supplied artwork unchanged. */
+.homey-logo{display:block;width:auto;height:auto;max-width:100%;object-fit:contain;object-position:center}
+.homey-brand{min-width:0;justify-content:center;padding:10px 7px 24px}
+.brand-logo-surface{background:#f8faf5;border-radius:14px;padding:10px 16px;display:flex;align-items:center;justify-content:center;width:100%;min-height:82px}
+.dashboard-homey-logo{width:min(180px,100%);max-height:69px}
+.brand-switch{display:flex;align-items:stretch;gap:7px;padding:5px;border:1px solid #e0e9db;border-radius:12px;background:#fff;min-width:0}
+.brand-switch-option{border:1px solid transparent;background:#fff;color:#44573e;border-radius:9px;padding:6px 12px;min-height:43px;min-width:80px;display:flex;align-items:center;justify-content:center;gap:7px;font-weight:750}
+.brand-switch-option:hover{background:#f3f7ed}
+.brand-switch-option.active{border-color:#b6cba8;background:#eaf2e5;box-shadow:inset 0 0 0 1px #dbe8d4}
+.switch-homey-logo{width:80px;max-height:31px}
+.order-brand-chip{display:inline-flex;align-items:center;justify-content:center;min-height:35px;min-width:70px;background:#f4f8f0}
+.editor-homey-logo{width:79px;max-height:31px}
+.shipping-label-header-homey{justify-content:center;align-items:center;min-height:21mm;padding:1.5mm 0 3mm;gap:0}
+.shipping-label-homey-logo{width:35mm;max-width:82%;max-height:16mm;height:auto}
+.shipping-sheets-3 .shipping-label-header-homey{min-height:15mm;padding:0 0 1mm}
+.shipping-sheets-3 .shipping-label-homey-logo{width:30mm;max-height:12mm}
+
+/* Responsive layouts: dashboard, forms, tables, dialogs, and the login experience. */
+html,body{max-width:100%;overflow-x:clip}
+.app,.main,.sidebar,.panel,.stat,.toolbar,.formgrid,.table,.modal{min-width:0}
+.main{width:100%;max-width:none;min-width:0}
+.panel{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.table{width:100%;min-width:760px}
+.table .links{display:flex;align-items:center;flex-wrap:nowrap;gap:5px}
+.table th,.table td{vertical-align:middle}
+.cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+.stat{min-width:0;overflow-wrap:anywhere}
+.stat b{font-size:clamp(19px,2vw,30px);overflow-wrap:anywhere}
+.header,.sectionhead,.toolbar,.top-actions{min-width:0}
+.top-actions{flex-wrap:wrap;justify-content:flex-end}
+.header h1{overflow-wrap:anywhere}
+.field,textarea,input,select{max-width:100%;min-width:0}
+.order-editor,.modal{max-width:min(1080px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain}
+.modalshade{padding:12px;overflow:hidden}
+.formgrid label,.order-editor .formgrid label{min-width:0}
+.modalfooter{flex-wrap:wrap;gap:8px}
+.login-premium{min-width:0}
+.login-split{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr)}
+.login-showcase{min-width:0}
+.login-showcase .showcase-cards>div{min-width:0}
+@media(max-width:1250px){
+ .sidebar{width:236px}
+ .main{padding:24px}
+ .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .brand-logo-surface{padding:8px 11px}
+ .dashboard-homey-logo{width:min(165px,100%)}
+ .order-editor .formgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:900px){
+ .sidebar{width:88px;padding:16px 7px}
+ .sidebar .brand{display:flex;padding:3px 1px 14px;border-bottom:1px solid #ffffff24}
+ .sidebar .brand .brand-copy{display:none}
+ .brand-logo-surface{padding:5px;min-height:45px;border-radius:9px}
+ .dashboard-homey-logo{width:68px;max-height:36px}
+ .nav{margin-top:16px;gap:8px}
+ .nav button{justify-content:center;padding:12px 8px}
+ .nav .label{display:none}
+ .sidebar-caption,.sidebar-bottom{display:none}
+ .main{padding:22px 16px}
+ .header{flex-wrap:wrap;align-items:start;gap:14px}
+ .login-split{grid-template-columns:1fr}
+ .login-showcase{min-height:200px;padding:24px}
+ .login-showcase h2{margin:16px 0 8px}
+ .login-showcase .showcase-cards{margin-top:12px}
+ .order-editor .formgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:640px){
+ .app{display:block;padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+ .sidebar{position:fixed;bottom:0;top:auto;inset-inline:0;width:100%;height:calc(68px + env(safe-area-inset-bottom,0px));min-height:0;padding:4px 6px calc(4px + env(safe-area-inset-bottom,0px));border-top:1px solid #e6ece2;background:#fff;box-shadow:0 -8px 25px #22372318;z-index:20}
+ .sidebar .brand,.sidebar-caption,.sidebar-bottom{display:none}
+ .nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;margin:0;height:100%;align-items:stretch}
+ .sidebar .nav button{min-width:0;min-height:0;padding:5px 2px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;background:transparent;color:#445746;font-size:11px}
+ .sidebar .nav button.active{background:#eaf3e6;color:#31562f}
+ .nav .label,.sidebar .nav .label{display:block;max-width:100%;font-size:10px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+ .main{padding:16px 12px 22px;min-height:calc(100dvh - 70px)}
+ .header{display:flex;flex-direction:column;align-items:stretch;gap:12px;margin-bottom:16px}
+ .header h1{font-size:22px}
+ .top-actions{display:flex;width:100%;justify-content:flex-start;gap:7px}
+ .workspace-status{display:none}
+ .brand-switch{flex:1;min-width:0;justify-content:center}
+ .brand-switch-option{flex:1;min-width:0;padding:5px}
+ .switch-homey-logo{width:74px}
+ .cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .stat{padding:13px 10px}
+ .stat b{font-size:clamp(18px,5vw,23px);margin:10px 0 5px}
+ .stat span{font-size:11px;line-height:1.5}
+ .periodbar{padding:12px;gap:8px}
+ .periodbar strong{width:100%}
+ .periodbar select,.periodbar label{width:100%}
+ .periodbar label{display:flex;gap:7px;justify-content:space-between}
+ .periodbar label input{flex:1;min-width:0}
+ .periodbar .muted{width:100%}
+ .sectionhead{align-items:stretch;flex-direction:column;gap:12px}
+ .sectionhead .toolbar{display:flex;flex-wrap:wrap;width:100%}
+ .sectionhead .toolbar>.field,.sectionhead .toolbar>input{width:100%;flex:1 1 100%}
+ .sectionhead .toolbar>.btn{flex:1 1 auto}
+ .panel{padding:14px 12px;border-radius:14px}
+ .table{min-width:730px}
+ .modalshade{padding:6px;align-items:center}
+ .modal,.order-editor{max-width:calc(100vw - 12px);width:100%;max-height:calc(100dvh - 12px);padding:16px 12px;border-radius:16px}
+ .formgrid,.order-editor .formgrid{grid-template-columns:minmax(0,1fr);gap:12px}
+ .modalfooter .btn{flex:1}
+ .login.login-split{padding:10px}
+ .login-showcase{min-height:0;padding:20px}
+ .login-showcase .showcase-cards{display:none}
+ .login.login-split .login-premium{max-width:100%;padding:25px 20px}
+ .shipping-print-view{padding:12px}
+ .shipping-print-toolbar{align-items:stretch;flex-direction:column}
+ .shipping-print-controls{align-items:stretch;flex-direction:column;width:100%}
+ .shipping-print-controls label{flex-wrap:wrap;justify-content:space-between}
+ .shipping-print-controls button{width:100%}
+ .shipping-print-help{max-width:100%;font-size:12px}
+}
+@media(max-width:390px){
+ .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .brand-switch{padding:3px;gap:3px}
+ .brand-switch-option{min-height:40px}
+ .switch-homey-logo{width:60px;max-height:27px}
+ .sidebar .nav .label{font-size:9px}
+ .login-showcase h2{font-size:24px}
+}
+@media screen and (max-width:900px){
+ /* An A4 sheet keeps its real millimetre dimensions; scroll the preview instead
+    of squashing the shipping label or altering print measurements. */
+ .shipping-print-view{overflow-x:auto;overflow-y:visible;max-width:100vw}
+ .shipping-sheets{width:max-content;min-width:0}
+ .shipping-sheet{transform:none}
+}
+@media print{
+ .brand-switch,.sidebar,.app{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+ .shipping-label-homey-logo{width:35mm!important;max-height:16mm!important;object-fit:contain}
+ .shipping-sheets-3 .shipping-label-homey-logo{width:30mm!important;max-height:12mm!important}
+}
