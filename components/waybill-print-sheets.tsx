@@ -34,12 +34,12 @@ export function WaybillLabel({waybill:w,printDate}:{waybill:Waybill;printDate?:s
  </article>;
 }
 
-export function WaybillPrintSheets({waybills,perPage,printDate}:{waybills:Waybill[];perPage:3|4;printDate?:string}){
+export function WaybillPrintSheets({waybills,perPage,printDate,printDates}:{waybills:Waybill[];perPage:3|4;printDate?:string;printDates?:Record<string,string>}){
  const chunks:Waybill[][]=[];
  for(let i=0;i<waybills.length;i+=perPage)chunks.push(waybills.slice(i,i+perPage));
  return <div className={'shipping-sheets shipping-sheets-'+perPage}>
   {chunks.map((group,idx)=><section className="shipping-sheet" key={idx} aria-label={'صفحة '+(idx+1)}>
-    {group.map(w=><WaybillLabel key={w.id} waybill={w} printDate={printDate}/>)}
+    {group.map(w=><WaybillLabel key={w.id} waybill={w} printDate={printDates?.[w.id]??printDate}/>)}
   </section>)}
  </div>;
 }
