@@ -129,3 +129,70 @@ input[type=date]{direction:ltr;text-align:left}
  .wb-form-total{padding:14px}.wb-form-total strong{font-size:20px}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+
+/* HOMEY & SODFA — premium 2026 order management visual system */
+html,body{font-variant-numeric:tabular-nums}body{background:#f5f7f4}
+.sidebar{background:linear-gradient(165deg,#203c29,#344d2a 72%,#283e2c);color:#f3f7ed;border-left:0;box-shadow:14px 0 35px #172f2110}
+.sidebar .brand,.sidebar .brand strong,.sidebar .brand small{color:#fff}
+.sidebar .nav button{color:#dbe7d5;display:flex;align-items:center;gap:13px}
+.sidebar .nav button:hover{background:#ffffff18;color:white}
+.sidebar .nav button.active{background:#e9f0e5;color:#294a2d;box-shadow:0 4px 14px #00000012}
+.sidebar .sidebar-caption,.sidebar .sidebar-bottom{color:#b9cfb7}
+.main{padding:30px 36px}
+.header h1{font-size:28px;letter-spacing:-.7px;color:#23352b}
+.stat,.panel,.periodbar{border:1px solid #e5ebe3;box-shadow:0 8px 32px #213d2810;background:#fff}
+.stat{border-radius:18px;padding:22px}
+.cards{gap:16px}.stat b{font-size:30px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border-radius:10px}
+.btn:not(.secondary):not(.danger){background:linear-gradient(135deg,#536e32,#3d5c30)}
+.btn:not(:disabled):hover{filter:brightness(.97)}
+.field{border-color:#d8e1d6;border-radius:10px;padding:12px 14px}
+.field:focus{border-color:#748e5e}
+.table th{background:#f5f7f2;color:#647461;font-weight:700}
+.table tbody tr:hover{background:#fafcf8}
+.table td{padding:16px 13px}
+.pill.status-preparing{background:#fff1cf;color:#9a6210}
+.pill.status-shipped{background:#dfefff;color:#155a9f}
+.pill.status-delivered{background:#dff5df;color:#1d7036}
+.pill.status-cancelled{background:#ffe1e1;color:#a52636}
+.pill.status-returned{background:#eee2ff;color:#7042a2}
+.pill.status-new{background:#e2f1ff;color:#25619f}
+.login-split{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr);place-items:stretch;gap:28px;padding:clamp(18px,4vw,60px);background:radial-gradient(circle at 6% 4%,#dae7ca 0,transparent 28%),#f8faf7;direction:ltr;align-items:center}
+.login-showcase{direction:rtl;min-height:590px;border-radius:28px;padding:clamp(30px,5vw,70px);background:linear-gradient(140deg,#e6eddd,#f7f9f3 60%);display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden}
+.login-showcase:before{content:"";position:absolute;width:360px;height:360px;border-radius:50%;background:#b5cb9550;top:-160px;left:-100px}
+.showcase-head{display:flex;align-items:center;gap:13px;font-weight:900;font-size:25px;color:#294323;direction:ltr;justify-content:flex-end}
+.showcase-head b{color:#a0ad83}.showcase-icon{width:58px;height:58px;display:grid;place-items:center;border:1px solid #c5d4b6;background:#ffffff90;border-radius:18px}
+.login-showcase h2{font-size:clamp(28px,3vw,44px);margin:55px 0 10px;color:#213b25}
+.login-showcase p{font-size:17px;line-height:2;max-width:510px;color:#61735e}
+.showcase-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:45px}
+.showcase-cards>div{padding:24px 14px;border-radius:18px;background:#fff;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;color:#52703b;box-shadow:0 12px 32px #1c3b1b0b}
+.showcase-cards strong{color:#2c4030}.showcase-cards small{font-size:12px;color:#7c8876}
+.showcase-stamp{position:relative;margin-top:50px;color:#8a9a7c;font-size:11px;letter-spacing:3px;direction:ltr}
+.login.login-split .login-premium{direction:rtl;margin:auto;width:min(490px,100%);padding:48px 43px;border-radius:26px;box-shadow:0 25px 80px #2b45231c;border:1px solid #f1f2ed}
+.login-premium .logo-circle{width:58px;height:58px;border-radius:18px;margin:0 auto 8px}
+.login-premium .login-eyebrow{text-align:center;color:#6a873e;font-weight:800;letter-spacing:2px;font-size:13px}
+.login-premium h1{text-align:center;font-size:34px;margin:10px 0 9px;color:#21362a}
+.login-premium>p.muted{text-align:center;font-size:14px;line-height:1.9;margin-bottom:28px}
+.login-premium form{display:grid;gap:19px}
+.login-premium label{font-size:14px;color:#2e402f;display:flex;flex-direction:column;gap:9px;font-weight:700}
+.login-premium input{width:100%;height:51px;font-weight:400}
+.login-premium .password-wrap{position:relative}
+.login-premium .password-toggle{position:absolute;left:8px;top:8px;border:0;background:#eef3ea;color:#54703f;padding:8px 12px;border-radius:8px;font-size:12px}
+.login-premium .login-submit{height:55px;font-size:17px;margin-top:5px;width:100%}
+.login-premium .login-foot{display:flex;align-items:center;justify-content:center;gap:7px;color:#7a8577;font-size:12px}
+.order-editor{width:min(1080px,96vw);border-radius:22px;padding:30px 36px;box-shadow:0 35px 100px #172c2730}
+.order-editor .sectionhead{padding-bottom:16px;border-bottom:1px solid #e8eee4;margin-bottom:22px}
+.order-editor .sectionhead h2{font-size:24px;display:flex;align-items:center;gap:12px}
+.order-brand-chip{font-size:11px;letter-spacing:1px;color:#396334;background:#e9f2e4;padding:7px 12px;border-radius:30px}
+.order-editor .formgrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.editor-section-title{font-size:18px;color:#254829;display:flex;align-items:center;gap:10px;padding:12px 0;margin:18px 0 15px;border-bottom:1px solid #ecf0e8}
+.catalog-picker{display:flex;flex-direction:column;gap:8px;margin-bottom:20px;font-weight:700;color:#4a6445;font-size:13px}
+.catalog-picker select{max-width:100%;width:100%}
+.editor-total{margin-top:22px;margin-inline-start:auto;background:#f6f9f2;border:1px solid #dce9d1;border-radius:15px;padding:19px;width:min(390px,100%);display:grid;gap:11px}
+.editor-total>div{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px}
+.editor-total .editor-grand{border-top:1px solid #cddbc6;padding-top:14px;font-size:17px;color:#24472b}
+.editor-total strong{white-space:nowrap}
+.order-editor .modalfooter{border-top:1px solid #e8eee5;padding-top:17px;margin-top:22px}
+@media(max-width:900px){.login-split{grid-template-columns:1fr;gap:16px}.login-showcase{min-height:270px;padding:30px}.login-showcase h2{margin:16px 0}.showcase-cards{margin-top:12px}.showcase-stamp{display:none}.order-editor .formgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.login-split{padding:12px}.login-showcase{min-height:180px}.login-showcase h2{font-size:27px}.login-showcase p{font-size:14px}.showcase-cards{display:none}.login.login-split .login-premium{padding:28px 22px}.order-editor{padding:16px;width:100%}.order-editor .formgrid{grid-template-columns:1fr}.sidebar .nav button{color:#354c36}.sidebar .nav button.active{background:#edf3e7}}
