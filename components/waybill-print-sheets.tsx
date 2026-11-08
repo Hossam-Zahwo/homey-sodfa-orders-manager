@@ -19,7 +19,7 @@ export function WaybillLabel({waybill:w,printDate}:{waybill:Waybill;printDate?:s
  const printedDate=printDate?formatPrintDate(printDate):'';
  return <article className="shipping-label" dir="rtl">
    <header className={'shipping-label-header '+(w.brand==='homey'?'shipping-label-header-homey':'')}>{w.brand==='homey'?<HomeyLogo className="shipping-label-homey-logo"/>:<><strong>صدفة</strong><span>SODFA</span></>}</header>
-   {printedDate&&<div className="shipping-label-print-date"><span>تاريخ الطباعة</span><strong dir="ltr">{printedDate}</strong></div>}
+   {printedDate&&<div className="shipping-label-print-date"><span>تاريخ الإنشاء</span><strong dir="ltr">{printedDate}</strong></div>}
    <div className="shipping-label-title">بيانات المستلم</div>
    <div className="shipping-label-detail"><span>اسم العميل</span><strong>{w.customerName}</strong></div>
    <div className="shipping-label-detail"><span>رقم الهاتف</span><strong className="shipping-label-phone" dir="ltr">{latin(w.phone)}</strong></div>
