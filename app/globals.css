@@ -198,3 +198,54 @@ html,body{font-variant-numeric:tabular-nums}body{background:#f5f7f4}
 .order-editor .modalfooter{border-top:1px solid #e8eee5;padding-top:17px;margin-top:22px}
 @media(max-width:900px){.login-split{grid-template-columns:1fr;gap:16px}.login-showcase{min-height:270px;padding:30px}.login-showcase h2{margin:16px 0}.showcase-cards{margin-top:12px}.showcase-stamp{display:none}.order-editor .formgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.login-split{padding:12px}.login-showcase{min-height:180px}.login-showcase h2{font-size:27px}.login-showcase p{font-size:14px}.showcase-cards{display:none}.login.login-split .login-premium{padding:28px 22px}.order-editor{padding:16px;width:100%}.order-editor .formgrid{grid-template-columns:1fr}.sidebar .nav button{color:#354c36}.sidebar .nav button.active{background:#edf3e7}}
+
+
+/* Shipping-label preview and A4 sticker print layout (not the stored waybill details) */
+body:has(.shipping-print-view),body:has(.shipping-print-state){background:#e8ede5;color:#243529}
+.shipping-print-view{max-width:1100px;margin:auto;padding:22px 16px 50px;font-family:"Segoe UI",Tahoma,Arial,sans-serif}
+.shipping-print-state{margin:80px auto;text-align:center;display:grid;justify-content:center;gap:15px}
+.shipping-print-toolbar{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;margin:0 auto 10px}
+.shipping-print-toolbar>a{color:#395a36;font-weight:700}
+.shipping-print-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.shipping-print-controls label{display:flex;align-items:center;gap:9px;color:#455544;font-size:13px}
+.shipping-print-controls select{padding:10px 14px;border:1px solid #cedbc9;border-radius:9px;background:white}
+.shipping-print-controls button{background:#3f622e;color:white;border:0;border-radius:10px;padding:12px 18px;font-weight:750}
+.shipping-print-help{color:#64735f;font-size:13px;line-height:1.8;margin:6px 0 18px}
+.shipping-sheets{display:grid;justify-content:center;gap:24px}
+.shipping-sheet{box-sizing:border-box;width:210mm;height:297mm;padding:9mm;display:grid;gap:4mm;background:white;box-shadow:0 15px 55px #22371f26;overflow:hidden}
+.shipping-sheets-4 .shipping-sheet{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr))}
+.shipping-sheets-3 .shipping-sheet{grid-template-columns:1fr;grid-template-rows:repeat(3,minmax(0,1fr));gap:3mm}
+.shipping-label{min-width:0;min-height:0;display:flex;flex-direction:column;padding:5mm;border:1px dashed #abbba4;overflow:hidden;color:#1c2a20;background:#fff;break-inside:avoid;page-break-inside:avoid}
+.shipping-label-header{display:flex;align-items:baseline;gap:10px;justify-content:space-between;padding-bottom:3mm;border-bottom:2px solid #46663c;color:#2d512f}
+.shipping-label-header strong{font-size:20px;font-weight:900;line-height:1.2}
+.shipping-label-header span{font-weight:800;letter-spacing:1.3px;font-size:12px}
+.shipping-label-title{font-size:12px;font-weight:800;color:#4e624d;margin-top:2mm}
+.shipping-label-detail{display:flex;align-items:flex-start;justify-content:space-between;gap:7px;font-size:12px;margin-top:2mm;line-height:1.5;min-width:0}
+.shipping-label-detail>span{flex:0 0 auto;color:#71806f;font-size:11px}
+.shipping-label-detail>strong{font-weight:800;font-size:14px;overflow-wrap:anywhere;word-break:break-word;text-align:left;min-width:0}
+.shipping-label-detail .shipping-label-phone{direction:ltr;unicode-bidi:isolate;font-size:15px;font-family:Arial,sans-serif;white-space:nowrap}
+.shipping-label-dual{display:grid;grid-template-columns:1fr 1fr;gap:3mm}
+.shipping-label-dual .shipping-label-detail{display:flex;flex-direction:column;gap:0}
+.shipping-label-dual .shipping-label-detail strong{text-align:right}
+.shipping-label-address{display:flex;flex-direction:column;gap:3px;min-height:0}
+.shipping-label-address strong{text-align:right;font-size:14px;line-height:1.6}
+.shipping-label-total{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:8px;background:#eff5eb;border:1px solid #b6c9af;border-radius:8px;padding:9px 10px;color:#234a28;font-weight:850;min-height:42px}
+.shipping-label-total span{font-size:12px}
+.shipping-label-total strong{white-space:nowrap;font-size:17px;font-variant-numeric:tabular-nums}
+.shipping-sheets-3 .shipping-label{padding:5mm 7mm}
+.shipping-sheets-3 .shipping-label-header{padding-bottom:1mm}
+.shipping-sheets-3 .shipping-label-detail{margin-top:1mm}
+.shipping-sheets-3 .shipping-label-dual{grid-template-columns:repeat(2,minmax(0,1fr))}
+.shipping-sheets-3 .shipping-label-total{min-height:35px;padding:6px 10px}
+@media(max-width:900px){.shipping-sheet{transform-origin:top center}.shipping-print-view{overflow-x:auto}.shipping-sheets{justify-content:start}}
+@media print{
+ @page{size:A4 portrait;margin:0}
+ html,body{margin:0!important;padding:0!important;width:210mm!important;background:white!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+ .shipping-print-toolbar,.shipping-print-help{display:none!important}
+ .shipping-print-view{max-width:none!important;width:210mm!important;padding:0!important;margin:0!important;overflow:visible!important}
+ .shipping-sheets{display:block!important;margin:0!important;padding:0!important}
+ .shipping-sheet{width:210mm!important;height:297mm!important;box-shadow:none!important;page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid;margin:0!important}
+ .shipping-sheet:last-child{page-break-after:auto;break-after:auto}
+ .shipping-label{border:1px dashed #a6ada0!important;box-shadow:none!important}
+ .shipping-label-total{background:#eff5eb!important}
+}
