@@ -7,6 +7,7 @@ export default function BatchWaybillPrint(){
  const [waybills,setWaybills]=useState<Waybill[]>([]);
  const [perPage,setPerPage]=useState<3|4>(4);
  const [printDate,setPrintDate]=useState('');
+ const [perWaybillPrintDates,setPerWaybillPrintDates]=useState<Record<string,string>>({});
  useEffect(()=>{const now=new Date();const local=new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,10);setPrintDate(local)},[]);
  const [error,setError]=useState('');
  const [loading,setLoading]=useState(true);
@@ -39,6 +40,7 @@ export default function BatchWaybillPrint(){
      <label className="shipping-print-date-control">تاريخ الطباعة
       <input type="date" value={printDate} onChange={e=>setPrintDate(e.target.value)} aria-label="تاريخ الطباعة على البوليصة"/>
      </label>
+     <button type="button" className="shipping-print-reset-dates" onClick={()=>setPerWaybillPrintDates({})}>توحيد تاريخ كل البوالص</button>
      <label>عدد البوالص في ورقة A4
       <select value={perPage} onChange={e=>setPerPage(Number(e.target.value) as 3|4)}>
        <option value={4}>4 بوالص / ورقة</option>
@@ -48,7 +50,20 @@ export default function BatchWaybillPrint(){
      <button onClick={()=>window.print()}>طباعة / حفظ PDF</button>
     </div>
    </div>
-   <p className="shipping-print-help">كل بوليصة فيها بيانات العميل والمطلوب تحصيله فقط. الخطوط الفاصلة بتحدد مكان القص على ورق A4.</p>
-   <WaybillPrintSheets waybills={waybills} perPage={perPage} printDate={printDate}/>
+   <p className="shipping-print-help">تاريخ الطباعة مستقل عن تاريخ إنشاء الأوردر. غير التاريخ العام فوق، أو خصّص تاريخ بوليصة بعينها من الجدول ده. التعديلات هنا للطباعة فقط ولا تغيّر تاريخ الطلب المحفوظ.</p>
+   <section className="shipping-print-date-editor" aria-label="تعديل تاريخ طباعة كل بوليصة">
+    <h2>تواريخ طباعة البوالص</h2>
+    <div className="shipping-print-date-list">
+     {waybills.map(w=><div className="shipping-print-date-row" key={w.id}>
+      <div className="shipping-print-date-customer"><strong>{w.customerName}</strong><small dir="ltr">{w.phone}</small></div>
+      <label>تاريخ الطباعة
+       <input type="date" aria-label={'تاريخ طباعة بوليصة '+w.customerName} value={perWaybillPrintDates[w.id]??printDate}
+        onChange={e=>setPerWaybillPrintDates(prev=>({...prev,[w.id]:e.target.value}))}/>
+      </label>
+      <button type="button" disabled={perWaybillPrintDates[w.id]===undefined} onClick={()=>setPerWaybillPrintDates(prev=>{const next={...prev};delete next[w.id];return next})}>استخدم التاريخ العام</button>
+     </div>)}
+    </div>
+   </section>
+   <WaybillPrintSheets waybills={waybills} perPage={perPage} printDate={printDate} printDates={perWaybillPrintDates}/>
  </main>;
 }
