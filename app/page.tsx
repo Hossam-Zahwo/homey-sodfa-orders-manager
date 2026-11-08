@@ -97,7 +97,7 @@ export default function Page(){
  <table className="table"><thead><tr>
   <th><input type="checkbox" aria-label="تحديد كل بوالص المتجر" checked={waybills.some(w=>w.brand===brand)&&waybills.filter(w=>w.brand===brand).every(w=>selectedWaybills.includes(w.id))}
    onChange={e=>{const ids=waybills.filter(w=>w.brand===brand).map(w=>w.id);setSelectedWaybills(old=>e.target.checked?[...new Set([...old,...ids])]:old.filter(id=>!ids.includes(id)))}}/></th>
-  {['رقم البوليصة','العميل','التليفون','العنوان','قيمة الفاتورة','الشحن','التحصيل','تاريخ الإنشاء','طباعة'].map(x=><th key={x}>{x}</th>)}
+  {['رقم البوليصة','العميل','التليفون','العنوان','قيمة الفاتورة','الشحن','التحصيل','تاريخ التسجيل','طباعة'].map(x=><th key={x}>{x}</th>)}
  </tr></thead><tbody>
  {waybills.filter(w=>w.brand===brand).map(w=><tr key={w.id}>
   <td><input type="checkbox" aria-label={'تحديد بوليصة '+w.customerName} checked={selectedWaybills.includes(w.id)} onChange={e=>setSelectedWaybills(old=>e.target.checked?[...new Set([...old,w.id])]:old.filter(id=>id!==w.id))}/></td>
@@ -105,7 +105,7 @@ export default function Page(){
   <td>{w.customerName}</td><td dir="ltr" className="numeric-value">{englishDigits(w.phone)}</td>
   <td>{[w.governorate,w.city,w.address].filter(Boolean).join('، ')}</td><td>{money(w.invoiceAmount)}</td>
   <td>{money(w.shippingCost)}</td><td><strong>{money(w.collectionAmount)}</strong></td><td className="numeric-value">{dateEN(w.createdAt)}</td>
-  <td><a className="btn tiny secondary" href={'/waybills/'+w.id} target="_blank" rel="noopener noreferrer"><Printer size={14}/> طباعة ملصق</a></td>
+  <td><a className="btn tiny secondary" href={'/waybills/'+w.id} target="_blank" rel="noopener noreferrer"><Printer size={14}/> تحديد التاريخ والطباعة</a></td>
  </tr>)}
  </tbody></table>
  {!waybills.filter(w=>w.brand===brand).length&&<div className="empty">لسه مفيش بوالص. افتح «العملاء» واضغط «بوليصة» بجانب العميل المطلوب.</div>}
