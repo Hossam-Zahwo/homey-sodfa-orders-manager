@@ -456,3 +456,20 @@ html,body{max-width:100%;overflow-x:clip}
 @media print{
  .invoice-logo .invoice-homey-logo{width:155px;max-height:72px}
 }
+
+
+/* Print manager: change the date on any label without touching order creation dates. */
+.shipping-print-reset-dates{border:1px solid #d3e0cd;background:#fff;color:#365537;padding:10px 13px;border-radius:9px;font-weight:700}
+.shipping-print-date-editor{background:#fff;border:1px solid #dce6d8;border-radius:15px;padding:17px;margin:14px auto 22px;max-width:860px;box-shadow:0 8px 25px #2c49231a}
+.shipping-print-date-editor h2{font-size:17px;color:#2d4e32;margin:0 0 14px}
+.shipping-print-date-list{display:grid;gap:8px;max-height:320px;overflow-y:auto;overscroll-behavior:contain}
+.shipping-print-date-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,220px) auto;align-items:center;gap:12px;border:1px solid #e7eee2;border-radius:10px;padding:11px}
+.shipping-print-date-customer{min-width:0;display:flex;flex-direction:column;gap:5px}
+.shipping-print-date-customer strong{font-size:14px;overflow-wrap:anywhere}
+.shipping-print-date-customer small{font-size:12px;color:#667767;text-align:right}
+.shipping-print-date-row label{font-size:12px;color:#647564;display:flex;flex-direction:column;gap:5px}
+.shipping-print-date-row input[type=date]{width:100%;min-height:41px;padding:8px;border:1px solid #cedbc9;border-radius:9px;background:white;direction:ltr;color:#26392a}
+.shipping-print-date-row button{border:1px solid #ccdccc;background:#f2f7ef;color:#385a38;padding:11px;border-radius:9px;white-space:nowrap}
+.shipping-print-date-row button:disabled{opacity:.45}
+@media(max-width:700px){.shipping-print-date-editor{padding:13px}.shipping-print-date-row{grid-template-columns:minmax(0,1fr);gap:8px}.shipping-print-date-row button{width:100%}}
+@media print{.shipping-print-date-editor,.shipping-print-reset-dates{display:none!important}}
