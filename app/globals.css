@@ -429,3 +429,30 @@ html,body{max-width:100%;overflow-x:clip}
  .shipping-label-homey-logo{width:35mm!important;max-height:16mm!important;object-fit:contain}
  .shipping-sheets-3 .shipping-label-homey-logo{width:30mm!important;max-height:12mm!important}
 }
+
+
+/* HOMEY's user-supplied artwork on the login screen and purchase invoice */
+.showcase-login-logo{padding:9px 14px;background:#fff;border:1px solid #e0e8d7;border-radius:14px;display:flex;align-items:center;justify-content:center;min-width:0;max-width:55%}
+.login-homey-logo{width:clamp(105px,17vw,190px);max-height:75px}
+.showcase-sodfa-brand{font-family:"Segoe UI",Arial,sans-serif;font-size:clamp(16px,2vw,27px);color:#294323;font-weight:850;white-space:nowrap}
+.invoice-homey-logo{width:clamp(115px,18vw,185px);max-height:85px}
+.invoice-logo{min-width:0}
+.invoice-paper{overflow-wrap:anywhere}
+@media(max-width:640px){
+ .showcase-head{flex-wrap:wrap;gap:10px;justify-content:center}
+ .showcase-login-logo{max-width:65%;padding:6px 9px}
+ .login-homey-logo{width:132px;max-height:62px}
+ .showcase-sodfa-brand{font-size:18px}
+ .invoice-page{width:100%;max-width:100%;padding:12px 8px;overflow-x:hidden}
+ .invoice-paper{padding:16px 12px;border-radius:12px}
+ .invoice-actions{flex-wrap:wrap}
+ .invoice-actions button{width:100%;justify-content:center}
+ .invoice-logo .invoice-homey-logo{width:145px;max-height:64px}
+ .invoice-head{flex-wrap:wrap}
+ .invoice-table{width:100%;table-layout:fixed}
+ .invoice-table th,.invoice-table td{white-space:normal!important;overflow-wrap:anywhere}
+ .invoice-summary{max-width:100%;width:100%}
+}
+@media print{
+ .invoice-logo .invoice-homey-logo{width:155px;max-height:72px}
+}
