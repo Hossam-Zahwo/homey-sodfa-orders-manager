@@ -1,5 +1,4 @@
 import {NextResponse} from 'next/server';
-import {requireAccess} from '@/lib/access';
-export const runtime='nodejs';
-export const dynamic='force-dynamic';
-export async function GET(r:Request){const blocked=await requireAccess(r);if(blocked)return blocked;return NextResponse.json({ok:true},{headers:{'Cache-Control':'no-store'}})}
+import {getStaff} from '@/lib/staff-auth';
+export const runtime='nodejs';export const dynamic='force-dynamic';
+export async function GET(req:Request){try{const user=await getStaff(req);return user?NextResponse.json({ok:true,user},{headers:{'Cache-Control':'no-store'}}):NextResponse.json({error:'Sign in required'},{status:401})}catch{return NextResponse.json({error:'Authentication unavailable'},{status:503})}}
