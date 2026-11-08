@@ -1,17 +1,13 @@
 import {NextResponse} from 'next/server';
-import {auth} from '@/lib/auth/server';
-
-// Every data endpoint checks a verified Neon Auth cookie AND the explicit email allowlist.
-// Missing ALLOWED_EMAILS fails closed; no self-signup or anonymous data access.
-export async function requireAccess(_request:Request):Promise<NextResponse|null>{
- const allow=(process.env.ALLOWED_EMAILS||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
- if(!allow.length||!process.env.NEON_AUTH_BASE_URL||!process.env.DATABASE_URL)
-  return NextResponse.json({error:'Dashboard access has not been enabled for the two authorized emails'},{status:503});
+import {getStaff} from '@/lib/staff-auth';
+export async function requireAccess(request:Request):Promise<NextResponse|null>{
  try{
-  const {data,error}=await auth.getSession();
-  if(error||!data?.user?.email)return NextResponse.json({error:'Sign in required'},{status:401});
-  if(!data.user.emailVerified||!allow.includes(data.user.email.toLowerCase()))
-   return NextResponse.json({error:'This account is not on the authorized list'},{status:403});
-  return null;
- }catch{return NextResponse.json({error:'Could not validate your login session'},{status:401})}
+  if(!['GET','HEAD','OPTIONS'].includes(request.method)){
+   const origin=request.headers.get('origin');
+   if(origin&&new URL(origin).host!==new URL(request.url).host)return NextResponse.json({error:'Invalid origin'},{status:403});
+   if(request.headers.get('sec-fetch-site')==='cross-site')return NextResponse.json({error:'Invalid request'},{status:403});
+  }
+  const user=await getStaff(request);
+  return user?null:NextResponse.json({error:'Sign in required'},{status:401,headers:{'Cache-Control':'no-store'}});
+ }catch{return NextResponse.json({error:'Dashboard authentication is unavailable'},{status:503})}
 }
