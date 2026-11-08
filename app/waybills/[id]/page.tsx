@@ -8,6 +8,8 @@ export default function WaybillPrint({params}:{params:Promise<{id:string}>}){
  const [error,setError]=useState('');
  const [loading,setLoading]=useState(true);
  const [perPage,setPerPage]=useState<3|4>(4);
+ const [printDate,setPrintDate]=useState('');
+ useEffect(()=>{const now=new Date();const local=new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,10);setPrintDate(local)},[]);
  useEffect(()=>{
   let active=true;
   params.then(async({id})=>{
@@ -27,6 +29,9 @@ export default function WaybillPrint({params}:{params:Promise<{id:string}>}){
    <div className="shipping-print-toolbar">
     <a href="/">الرجوع لإدارة الطلبات</a>
     <div className="shipping-print-controls">
+     <label className="shipping-print-date-control">تاريخ الطباعة
+      <input type="date" value={printDate} onChange={e=>setPrintDate(e.target.value)} aria-label="تاريخ الطباعة على البوليصة"/>
+     </label>
      <label>عدد البوالص في ورقة A4
       <select value={perPage} onChange={e=>setPerPage(Number(e.target.value) as 3|4)}><option value={4}>4 بوالص</option><option value={3}>3 بوالص</option></select>
      </label>
@@ -34,6 +39,6 @@ export default function WaybillPrint({params}:{params:Promise<{id:string}>}){
     </div>
    </div>
    <p className="shipping-print-help">دي معاينة ملصق الشحن المختصر. لو بتطبع بوليصة واحدة هتظهر في أول مكان من الورقة، وتقدر تجمع 3 أو 4 بوالص من صفحة «البوالص».</p>
-   <WaybillPrintSheets waybills={[record]} perPage={perPage}/>
+   <WaybillPrintSheets waybills={[record]} perPage={perPage} printDate={printDate}/>
  </main>;
 }
