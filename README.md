@@ -28,3 +28,25 @@ npm run build
 Never treat a passing deployment as proof of working login or CRUD. Verify both authorized password logins, third-user rejection, API 401/403, and create/read/update/soft-delete using sample orders before entering customer data.
 
 No secrets in GitHub or browser code. This is separate from HOMEY's production Supabase databases.
+
+
+## HOMEY brand image (required local asset)
+The UI uses the **original image** supplied by the store owner, not a recreation.
+Place the file at the exact path `public/HOMEY-olive (3).png` in the Next.js project root.
+The folder must be spelled `public` (**not** `puplic`). Keep the filename unchanged, including
+spaces, parentheses, capitalization, and extension. Check `http://localhost:3001/HOMEY-olive%20(3).png`
+(or substitute your local port) to confirm the asset loads.
+
+The image file exists on the operator's computer; it is **not** bundled automatically by GitHub
+code changes. Before any future production deployment, add and commit the image to the
+same Git branch:
+
+```powershell
+git add -- "public/HOMEY-olive (3).png"
+git commit -m "Add original HOMEY olive logo artwork"
+git push origin feature/username-password-order-workflow
+```
+
+Responsive styles support desktop, tablet and mobile dashboards, forms and navigation.
+A4 paper preview intentionally retains physical A4 size and scrolls horizontally on small
+screens; print output remains 3 or 4 stickers per page.
