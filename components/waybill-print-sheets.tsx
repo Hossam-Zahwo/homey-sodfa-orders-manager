@@ -1,5 +1,6 @@
 'use client';
 import type {Waybill} from '@/lib/types';
+import {HomeyLogo} from '@/components/homey-logo';
 
 const latin=(value:string)=>String(value||'').replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-0x660)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-0x6f0));
 const currency=(value:number)=>new Intl.NumberFormat('en-US',{maximumFractionDigits:2,numberingSystem:'latn'}).format(Math.max(0,Number(value)||0))+' ج.م';
@@ -17,7 +18,7 @@ const formatPrintDate=(date:string)=>{
 export function WaybillLabel({waybill:w,printDate}:{waybill:Waybill;printDate?:string}){
  const printedDate=printDate?formatPrintDate(printDate):'';
  return <article className="shipping-label" dir="rtl">
-   <header className="shipping-label-header"><strong>{w.brand==='homey'?'هومي':'صدفة'}</strong><span>{w.brand==='homey'?'HOMEY':'SODFA'}</span></header>
+   <header className={'shipping-label-header '+(w.brand==='homey'?'shipping-label-header-homey':'')}>{w.brand==='homey'?<HomeyLogo className="shipping-label-homey-logo"/>:<><strong>صدفة</strong><span>SODFA</span></>}</header>
    {printedDate&&<div className="shipping-label-print-date"><span>تاريخ الطباعة</span><strong dir="ltr">{printedDate}</strong></div>}
    <div className="shipping-label-title">بيانات المستلم</div>
    <div className="shipping-label-detail"><span>اسم العميل</span><strong>{w.customerName}</strong></div>
