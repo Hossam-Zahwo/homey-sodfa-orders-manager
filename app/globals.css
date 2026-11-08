@@ -473,3 +473,57 @@ html,body{max-width:100%;overflow-x:clip}
 .shipping-print-date-row button:disabled{opacity:.45}
 @media(max-width:700px){.shipping-print-date-editor{padding:13px}.shipping-print-date-row{grid-template-columns:minmax(0,1fr);gap:8px}.shipping-print-date-row button{width:100%}}
 @media print{.shipping-print-date-editor,.shipping-print-reset-dates{display:none!important}}
+
+
+/* Accessible desktop/tablet/mobile navigation. Mobile and tablet show a top menu
+   which opens the full sidebar as a drawer instead of hiding sections. */
+.header-heading{display:flex;align-items:flex-start;gap:12px;min-width:0;flex:1}
+.header-title{min-width:0;flex:1}
+.mobile-nav-trigger,.sidebar-mobile-header,.mobile-nav-backdrop{display:none}
+@media(max-width:1100px){
+ .mobile-nav-trigger{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:none;min-height:44px;margin-top:0;padding:9px 12px;border:1px solid #d7e5d1;background:#fff;color:#304d32;border-radius:11px;font-weight:750;box-shadow:0 3px 14px #253e2710}
+ .mobile-nav-trigger:hover,.mobile-nav-trigger:focus-visible{background:#edf4e8}
+ .mobile-nav-backdrop{display:block;position:fixed;inset:0;z-index:98;background:rgba(10,27,19,.58);border:0;border-radius:0;padding:0;cursor:pointer}
+ .app{display:block;padding-bottom:0}
+ .sidebar,.app .sidebar{
+  display:flex;flex-direction:column;position:fixed;inset-block:0;inset-inline-start:0;right:0;left:auto;
+  width:min(310px,86vw);max-width:calc(100vw - 36px);height:100dvh;min-height:0;
+  padding:20px 17px 24px;z-index:99;transform:translateX(110%);
+  transition:transform .22s ease;overflow-y:auto;overscroll-behavior:contain;
+  background:linear-gradient(170deg,#203c29,#344d2a 72%,#283e2c);border:0;
+  box-shadow:-14px 0 55px #13261b3d;color:#fff;
+ }
+ .sidebar.sidebar-open,.app .sidebar.sidebar-open{transform:translateX(0)}
+ .sidebar-mobile-header{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#f5f8f2;font-size:17px;font-weight:800;padding:2px 3px 13px;margin-bottom:13px;border-bottom:1px solid #ffffff2c}
+ .sidebar-mobile-header button{display:grid;place-items:center;width:38px;height:38px;flex:none;border:1px solid #ffffff38;border-radius:10px;color:#f5faf4;background:#ffffff1c;padding:5px}
+ .sidebar .brand,.app .sidebar .brand{display:flex;align-items:center;justify-content:center;min-height:70px;padding:8px 6px 20px;margin-bottom:12px;border-bottom:1px solid #ffffff20}
+ .sidebar .brand .brand-copy{display:flex}
+ .sidebar .homey-brand .dashboard-homey-logo{width:min(184px,100%);max-height:66px}
+ .sidebar .brand-logo-surface{width:100%;max-width:216px;background:#f8faf5;min-height:67px;padding:9px 15px}
+ .sidebar-caption,.sidebar .sidebar-caption{display:block;padding:12px 11px 10px;color:#b3c3b0}
+ .sidebar .nav,.app .sidebar .nav{display:flex;flex-direction:column;align-items:stretch;gap:7px;margin:4px 0;flex:0 0 auto;height:auto}
+ .sidebar .nav button,.app .sidebar .nav button{display:flex;flex-direction:row;justify-content:flex-start;align-items:center;gap:13px;min-height:48px;width:100%;padding:12px 15px;border:1px solid transparent;border-radius:12px;background:transparent;color:#e0eadc;font-size:14px;text-align:right}
+ .sidebar .nav button.active,.app .sidebar .nav button.active{background:#eaf3e6;color:#31562f;font-weight:800}
+ .sidebar .nav .label,.app .sidebar .nav .label{display:inline;max-width:none;font-size:14px;white-space:normal;overflow:visible}
+ .sidebar .sidebar-bottom{display:flex;margin-top:auto;color:#dce8d8}
+ .main{min-width:0;width:100%;max-width:none;padding:22px 18px}
+ .header{display:flex;align-items:flex-start;gap:14px}
+ .header-heading{align-items:center}
+ .header-title h1{margin-bottom:7px}
+}
+@media(max-width:640px){
+ .app{padding-bottom:0}
+ .sidebar,.app .sidebar{bottom:0;top:0;inset-inline-start:0;inset-inline-end:auto;height:100dvh;width:min(310px,86vw);padding:17px 15px 23px;border:0}
+ .sidebar .brand,.app .sidebar .brand{display:flex}
+ .sidebar .nav,.app .sidebar .nav{display:flex;flex-direction:column}
+ .sidebar .nav button,.app .sidebar .nav button{flex-direction:row;justify-content:flex-start;gap:13px;min-height:48px}
+ .sidebar .nav .label,.app .sidebar .nav .label{font-size:14px}
+ .header-heading{width:100%;align-items:center}
+ .header-title h1{font-size:22px}
+ .mobile-nav-trigger{padding:9px;min-width:44px}
+ .mobile-nav-trigger span{display:none}
+ .main{padding:15px 12px 25px}
+}
+@media(prefers-reduced-motion:reduce){
+ .sidebar,.app .sidebar{transition:none}
+}
