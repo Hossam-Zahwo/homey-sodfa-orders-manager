@@ -527,3 +527,42 @@ html,body{max-width:100%;overflow-x:clip}
 @media(prefers-reduced-motion:reduce){
  .sidebar,.app .sidebar{transition:none}
 }
+.app[data-brand="sodfa"] .sidebar,.app[data-brand="sodfa"] .dashboard-intro,.app[data-brand="sodfa"] .btn:not(.secondary):not(.danger){background:linear-gradient(135deg,#713cad,#17101f 85%)}
+button.stat{text-align:start;cursor:pointer;font:inherit;color:inherit}
+.bulk-actions{margin-bottom:14px}
+.product-option{display:flex;align-items:center;gap:8px;width:100%;text-align:start;min-width:0}
+.product-option span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.product-option img,.product-option svg{width:36px;height:36px;object-fit:cover;flex:none;border-radius:6px}
+.product-results{display:grid;gap:5px;max-height:185px;overflow:auto}
+@media print{
+ .app:has(.print-preview){display:block;min-height:0;padding:0;background:white}
+ .app:has(.print-preview) > :not(.print-preview){display:none!important}
+ .print-preview.modalshade,.print-preview .modal{position:static;display:block;max-width:none;width:auto;max-height:none;overflow:visible;margin:0;padding:0;background:white;box-shadow:none;border:0}
+ .print-preview .print-controls{display:none!important}
+}
+.formgrid > .full{grid-column:1/-1}
+.table td.order-actions{max-width:none;overflow:visible}
+.order-actions .links{flex-wrap:wrap}
+.formgrid > .full:has(.product-option){min-width:0}
+.product-option{margin-block:5px}
+
+.app[data-brand="sodfa"]{
+ --canvas:#f5f0fa;--ink:#2a1937;--muted:#756484;--line:#e6dbea;--border:#e6dbea;
+ color:var(--ink);background:linear-gradient(145deg,#eae0f5,#faf7fc 52%,#eee5f6);
+}
+.app[data-brand="sodfa"] :is(.header h1,.periodbar strong,.stat b,.table td strong,.modal h2,.modal h3,.field,.table td){color:var(--ink)}
+.app[data-brand="sodfa"] :is(.muted,.table th,.stat span,.formgrid label,.period-dot){color:var(--muted)}
+.app[data-brand="sodfa"] :is(.brand-mark,.brand-copy small,.sidebar-caption,.sidebar-bottom,.sidebar-bottom svg,.sidebar-bottom small,.nav button){color:#eadcf7}
+.app[data-brand="sodfa"] .nav button.active{background:#9d61ca55;box-shadow:inset -3px 0 #cd9cf2}
+.app[data-brand="sodfa"] :is(.header,.periodbar,.panel,.stat,.field,.modal,.modal .sectionhead,.modalfooter,.table td,.table th,.btn.secondary){border-color:var(--line)}
+.app[data-brand="sodfa"] :is(.periodbar,.table th,.table tr:hover td,.workspace-status,.empty){background:#f5eefb}
+.app[data-brand="sodfa"] .status-dot{background:#9254c3;box-shadow:0 0 0 3px #ead7f7}
+.app[data-brand="sodfa"] .order-ref{color:var(--primary);background:var(--soft)}
+.app[data-brand="sodfa"] .modalshade{background:#20112dcc}
+@media screen{
+}
+.print-preview .shipping-preview{overflow:auto}
+@media print{
+ .print-preview .shipping-preview{overflow:visible}
+ .app[data-brand="sodfa"]:has(.print-preview){background:white}
+}
