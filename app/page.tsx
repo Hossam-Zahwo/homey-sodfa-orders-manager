@@ -3,7 +3,7 @@ import {useEffect,useState} from 'react';
 import {ProductPicker} from './product-picker';
 import {WaybillPaper} from './waybill-paper';
 import {browserAuth} from '@/lib/browser-auth';
-import {LayoutDashboard,Package,Users,Settings,LogOut,Plus,Download,Trash2,Pencil,RefreshCcw,ShoppingBag,CheckCircle2,Wallet,Printer,XCircle,ArrowUpLeft,ShieldCheck,Sparkles} from 'lucide-react';
+import {LayoutDashboard,Package,Users,Settings,LogOut,Plus,Download,Trash2,Pencil,RefreshCcw,ShoppingBag,CheckCircle2,Wallet,Printer,FileDown,XCircle,ArrowUpLeft,ShieldCheck,Sparkles} from 'lucide-react';
 import type {Brand,Order,Customer,Item,Waybill,Status} from '@/lib/types';
 import {statuses,statusLabels,govs,totalOf} from '@/lib/types';
 
@@ -19,6 +19,8 @@ function exportCsv(rows:Order[]){const headers=['ID','Brand','Created','Customer
 async function api(path:string,method='GET',body?:unknown){const response=await fetch('/api/'+path,{method,headers:{'Content-Type':'application/json'},credentials:'same-origin',body:body===undefined?undefined:JSON.stringify(body),cache:'no-store'});const json=await response.json();if(!response.ok)throw new Error(json.error||'حدث خطأ');return json}
 export default function Page(){
  const [auth,setAuth]=useState<boolean|null>(null),[email,setEmail]=useState(''),[brand,setBrand]=useState<Brand>('homey'),[tab,setTab]=useState<Tab>('dashboard'),[orders,setOrders]=useState<Order[]>([]),[customers,setCustomers]=useState<Customer[]>([]),[search,setSearch]=useState(''),[filter,setFilter]=useState('all'),[editing,setEditing]=useState<Order|null>(null),[editCustomer,setEditCustomer]=useState<Customer|null>(null),[busy,setBusy]=useState(false),[err,setErr]=useState(''),[notice,setNotice]=useState(''),[loaded,setLoaded]=useState(false);
+ const [bulkEditing,setBulkEditing]=useState<Order[]>([]);
+ const [pdfHelp,setPdfHelp]=useState(false);
  const [selected,setSelected]=useState<string[]>([]);
  const [bulkStatus,setBulkStatus]=useState<Status>('preparing');
  const [printOrders,setPrintOrders]=useState<Order[]>([]);
@@ -74,6 +76,7 @@ export default function Page(){
  }
  function preview(rows:Order[]){
   setPrintDate(new Date().toLocaleDateString('en-CA'));
+  setPdfHelp(false);
   setPrintOrders(rows);
  }
  function fromCustomer(c:Customer){
@@ -90,7 +93,7 @@ export default function Page(){
    invoiceAmount,shippingCost:0,prepaid:o.prepaid,collectionAmount:Math.max(0,invoiceAmount-o.prepaid),
    paymentMethod:o.paymentMethod,description:o.items.filter(i=>i.name).map(i=>i.name+' × '+i.quantity).join('، '),notes:''};
  }
- async function updateOrders(rows:Order[],action:Status|'delete'){
+ async function updateOrders(rows:Order[],action:Status|'delete'|Partial<Order>){
   if(!rows.length||busy)return;
   if((action==='delete'||action==='cancelled')&&!confirm(action==='delete'?'حذف الطلبات المحددة؟':'إلغاء الطلبات المحددة؟'))return;
   setBusy(true);setErr('');setNotice('');
@@ -102,7 +105,7 @@ export default function Page(){
      await api('orders','DELETE',{id:order.id,version:order.version});
      setOrders(current=>current.filter(o=>o.id!==order.id));
     }else{
-     const result=await api('orders','POST',{...order,status:action});
+     const result=await api('orders','POST',{...order,...(typeof action==='string'?{status:action}:action)});
      setOrders(current=>current.map(o=>o.id===order.id?result.data:o));
     }
     completed.push(order.id);
@@ -111,7 +114,23 @@ export default function Page(){
   setSelected(current=>current.filter(id=>!completed.includes(id)));
   if(completed.length)setNotice('تم تحديث '+number(completed.length)+' طلب');
   if(errors.length)setErr('تعذّر تحديث '+number(errors.length)+' طلب. '+errors[0]);
+  setBulkEditing(current=>current.filter(order=>!completed.includes(order.id)));
   setBusy(false);
+ }
+ function saveBulk(e:React.FormEvent<HTMLFormElement>){
+  e.preventDefault();
+  const fields=new FormData(e.currentTarget);
+  const patch:Partial<Order>={};
+  for(const key of ['governorate','city','source','paymentMethod','assignedTo','notes'] as const){
+   const value=String(fields.get(key)??'').trim();
+   if(value)patch[key]=value;
+  }
+  for(const key of ['shipping','discount','prepaid'] as const){
+   const value=String(fields.get(key)??'');
+   if(value!=='')patch[key]=Number(value);
+  }
+  if(!Object.keys(patch).length){setErr('ادخل قيمة في خانة واحدة على الأقل');return}
+  void updateOrders(bulkEditing,patch);
  }
  async function saveOrder(e:React.FormEvent){e.preventDefault();if(!editing)return;setBusy(true);setErr('');try{await api('orders','POST',editing);setEditing(null);setNotice('تم حفظ الطلب');await reload()}catch(e){setErr((e as Error).message)}finally{setBusy(false)}}
  async function saveCustomer(e:React.FormEvent){e.preventDefault();if(!editCustomer)return;setBusy(true);setErr('');try{await api('customers','POST',editCustomer);setEditCustomer(null);setNotice('تم حفظ العميل');await reload()}catch(e){setErr((e as Error).message)}finally{setBusy(false)}}
@@ -132,6 +151,7 @@ export default function Page(){
  </section><section className="panel"><div className="sectionhead"><h2>آخر الطلبات</h2><button className="btn" onClick={()=>setEditing(newOrder(brand))}><Plus size={16}/> إضافة أوردر</button></div>{table(visible.slice(0,8))}</section></>}
  {tab==='orders'&&<section className="panel"><div className="sectionhead"><h2>الطلبات ({number(visible.length)})</h2><div className="toolbar"><input className="field" placeholder="ابحث بالاسم أو رقم التليفون أو المنتج" value={search} onChange={e=>{setSearch(e.target.value);setSelected([])}}/><select className="field" value={filter} onChange={e=>{setFilter(e.target.value);setSelected([])}}><option value="all">كل الحالات</option><option value="active">كل الطلبات غير الملغية</option>{statuses.map(s=><option key={s} value={s}>{statusLabels[s]}</option>)}</select><button className="btn secondary" onClick={()=>exportCsv(visible)}><Download size={16}/> CSV</button><button className="btn" onClick={()=>{setErr('');setEditing(newOrder(brand))}}><Plus size={16}/> أوردر جديد</button></div></div>{selectedOrders.length>0&&<div className="toolbar bulk-actions">
  <strong>{number(selectedOrders.length)} طلب محدد</strong>
+ <button className="btn secondary" disabled={busy} onClick={()=>{setErr('');setBulkEditing(selectedOrders)}}><Pencil size={16}/> تعديل المحدد</button>
  <button className="btn secondary" disabled={busy} onClick={()=>preview(selectedOrders)}><Printer size={16}/> طباعة المحدد</button>
  <select className="field" aria-label="حالة الطلبات المحددة" value={bulkStatus} onChange={e=>setBulkStatus(e.target.value as Status)}>{statuses.map(status=><option key={status} value={status}>{statusLabels[status]}</option>)}</select>
  <button className="btn secondary" disabled={busy} onClick={()=>updateOrders(selectedOrders,'confirmed')}>تأكيد المحدد</button>
@@ -142,11 +162,24 @@ export default function Page(){
  {tab==='customers'&&<section className="panel"><div className="sectionhead"><h2>العملاء ({number(activeCustomers.length)})</h2><div className="toolbar"><input className="field" value={search} onChange={e=>{setSearch(e.target.value);setSelected([])}} placeholder="بحث عن عميل"/><button className="btn" onClick={()=>setEditCustomer(newCustomer(brand))}><Plus size={16}/> عميل جديد</button></div></div><table className="table"><thead><tr>{['الاسم','التليفون','أول طلب','عدد الطلبات','إجمالي المشتريات','المسلّم','الإجراءات'].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{activeCustomers.map(c=><tr key={c.id}><td><strong>{c.name}</strong></td><td dir="ltr" className="numeric-value">{englishDigits(c.phone)}</td><td>{customerOrders(c.phone).length?customerOrders(c.phone).map(o=>o.createdAt.slice(0,10)).sort()[0]:'—'}</td><td className="numeric-value">{number(customerOrders(c.phone).length)}</td><td>{money(customerOrders(c.phone).reduce((v,o)=>v+totalOf(o),0))}</td><td>{money(customerOrders(c.phone).filter(o=>o.status==='delivered').reduce((v,o)=>v+totalOf(o),0))}</td><td><div className="links"><button className="btn tiny secondary" title="إنشاء بوليصة" onClick={()=>fromCustomer(c)}><Printer size={15}/> بوليصة</button><button className="btn tiny secondary" onClick={()=>setEditCustomer({...c})}><Pencil size={15}/></button><button className="btn tiny danger" onClick={()=>deleteCustomer(c)}><Trash2 size={15}/></button></div></td></tr>)}</tbody></table>{!activeCustomers.length&&<div className="empty">لا يوجد عملاء مسجلين</div>}</section>}
  {tab==='settings'&&<section className="panel"><h2>قاعدة بيانات Neon</h2><p className="muted">الطلبات والعملاء محفوظين في قاعدة بيانات Neon منفصلة للمشروع، مش Google Sheets. الاستضافة على Vercel. الدخول بنظام Neon Auth برابط إيميل، مع حماية البيانات وALLOWED_EMAILS للإيميلين فقط.</p><p className="muted">تقدر تصدّر الطلبات بصيغة CSV من تبويب الأوردرات. حذف الطلبات حذف منطقي قابل للاسترجاع من قاعدة البيانات.</p></section>}
  </main>
+ {bulkEditing.length>0&&<div className="modalshade">
+ <section className="modal" role="dialog" aria-modal="true" aria-label="تعديل الأوردرات المحددة">
+ <div className="sectionhead"><h2>تعديل {number(bulkEditing.length)} أوردر</h2><button type="button" disabled={busy} className="btn secondary" onClick={()=>setBulkEditing([])}>إغلاق</button></div>
+ <p className="muted">اكتب القيم اللي عايز تطبقها على كل الأوردرات المحددة. الخانات الفاضية بتحتفظ بقيمتها الحالية.</p>
+ <form onSubmit={saveBulk}><div className="formgrid">
+ <label>المحافظة<select className="field" name="governorate"><option value="">اختيار المحافظة</option>{govs.map(g=><option key={g}>{g}</option>)}</select></label>
+ <label>طريقة الدفع<select className="field" name="paymentMethod"><option value="">اختيار طريقة الدفع</option>{['الدفع عند الاستلام','InstaPay','مدفوع بالكامل','جزئي مقدم'].map(method=><option key={method}>{method}</option>)}</select></label>
+ <label>مصدر الطلب<select className="field" name="source"><option value="">اختيار المصدر</option>{['Facebook','Instagram','WhatsApp','Website','TikTok','Amazon','Other'].map(source=><option key={source}>{source}</option>)}</select></label>
+ {([['city','المدينة / المنطقة'],['assignedTo','المسؤول عن المتابعة'],['notes','ملاحظات']] as const).map(([name,label])=><label key={name}>{label}<input className="field" name={name}/></label>)}
+ {([['shipping','الشحن'],['discount','الخصم'],['prepaid','المدفوع مقدمًا']] as const).map(([name,label])=><label key={name}>{label}<input className="field numeric-input" name={name} type="number" min="0" step="0.01"/></label>)}
+ </div>{err&&<p className="notice error" role="alert">{err}</p>}<div className="modalfooter"><button className="btn" disabled={busy}>حفظ التعديلات</button></div></form>
+ </section></div>}
  {printOrders.length>0&&<div className="modalshade print-preview" onClick={e=>{if(e.target===e.currentTarget)setPrintOrders([])}}>
  <section className="modal" role="dialog" aria-modal="true" aria-label="معاينة البوالص">
  <form className="print-controls" onSubmit={e=>{e.preventDefault();window.print()}}>
  <div className="sectionhead"><h2>معاينة الطباعة ({number(printOrders.length)})</h2><button type="button" className="btn secondary" onClick={()=>setPrintOrders([])}>إغلاق</button></div>
- <div className="toolbar bulk-actions"><label>تاريخ الطباعة <input type="date" className="field" required value={printDate} onChange={e=>setPrintDate(e.target.value)}/></label><button className="btn"><Printer size={16}/> طباعة / حفظ PDF</button></div>
+ <div className="toolbar bulk-actions"><label>تاريخ الطباعة <input type="date" className="field" required value={printDate} onChange={e=>setPrintDate(e.target.value)}/></label><button className="btn" onClick={()=>setPdfHelp(false)}><Printer size={16}/> طباعة</button><button className="btn secondary" type="button" onClick={()=>setPdfHelp(true)}><FileDown size={16}/> حفظ PDF</button></div>
+ {pdfHelp&&<p className="notice">اختار «حفظ بتنسيق PDF» كوجهة في نافذة الطباعة. <button className="btn tiny secondary" type="submit">فتح نافذة الحفظ</button></p>}
  </form>
  {printOrders.map(o=><WaybillPaper key={o.id||o.phone} waybill={printable(o)}/>)}
  </section></div>}
