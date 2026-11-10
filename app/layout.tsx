@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'HOMEY & SODFA',
   },
-  icons: { icon: '/icon.svg' },
+  icons: { icon: '/icon.svg', apple: '/sodfa-app-180.png' },
 };
 
 export const viewport: Viewport = {
