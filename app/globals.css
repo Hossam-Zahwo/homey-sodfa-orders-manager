@@ -566,3 +566,7 @@ button.stat{text-align:start;cursor:pointer;font:inherit;color:inherit}
  .print-preview .shipping-preview{overflow:visible}
  .app[data-brand="sodfa"]:has(.print-preview){background:white}
 }
+.shipping-sheets-4 .shipping-label-address strong{white-space:pre-wrap;overflow-wrap:anywhere}
+.shipping-sheets-4 .shipping-label-header{padding-bottom:2mm}
+.shipping-sheets-4 .shipping-label-detail{margin-top:1.5mm}
+.shipping-sheets-4 .shipping-label-note strong{font-size:12px}

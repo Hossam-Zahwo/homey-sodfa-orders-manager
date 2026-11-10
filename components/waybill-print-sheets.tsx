@@ -28,7 +28,7 @@ export function WaybillLabel({waybill:w,printDate}:{waybill:Waybill;printDate?:s
     <div className="shipping-label-detail"><span>المحافظة</span><strong>{w.governorate||'—'}</strong></div>
     <div className="shipping-label-detail"><span>المدينة / المنطقة</span><strong>{w.city||'—'}</strong></div>
    </div>
-   <div className="shipping-label-detail shipping-label-address"><span>العنوان بالتفصيل</span><strong>{w.address}</strong></div>
+   <div className="shipping-label-detail shipping-label-address"><span>العنوان بالتفصيل</span><strong>{w.address?.trim()||'—'}</strong></div>
    {w.notes?.trim()&&<div className="shipping-label-note"><span>ملاحظات</span><strong>{w.notes.trim()}</strong></div>}
    <div className="shipping-label-total"><span>المطلوب تحصيله</span><strong dir="ltr">{currency(w.collectionAmount)}</strong></div>
  </article>;

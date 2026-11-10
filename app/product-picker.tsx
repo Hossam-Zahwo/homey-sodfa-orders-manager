@@ -16,7 +16,7 @@ export function ProductPicker({item,products,onChange}:{item:Item;products:Item[
  }
  return <div className="full">
   <span className="muted">المنتج</span>
-  {item.name&&!manual&&<div className="product-option">{thumbnail(item.imageUrl)}<span title={item.name}>{item.name}</span></div>}
+  {item.name&&!manual&&<div className="product-option">{thumbnail(item.imageUrl||products.find(product=>product.sku===item.sku&&product.name===item.name)?.imageUrl)}<span title={item.name}>{item.name}</span></div>}
   <div className="toolbar">
    <button type="button" className="btn tiny secondary" aria-expanded={open} onClick={()=>{setOpen(!open);setQuery('')}}>{item.name?'اختيار منتج تاني':'ابحث عن منتج'}</button>
    <button type="button" className="btn tiny secondary" onClick={()=>{setManual(!manual);setOpen(false)}}>{manual?'إغلاق التعديل اليدوي':item.name?'تعديل بيانات المنتج':'إدخال منتج يدويًا'}</button>
