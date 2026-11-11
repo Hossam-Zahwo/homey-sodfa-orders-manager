@@ -38,6 +38,7 @@ export default function Page(){
  useEffect(()=>{let active=true;async function checkSession(){try{const response=await fetch('/api/whoami',{credentials:'same-origin',cache:'no-store'});if(active){setAuth(response.ok);if(!response.ok&&response.status!==401)setErr('تعذر التحقق من تسجيل الدخول')}}catch{if(active){setAuth(false);setErr('تعذر الاتصال بالسيرفر')}}}void checkSession();return()=>{active=false}},[]);
  useEffect(()=>{if(!auth||brand!=='homey')return;let active=true;fetch('/api/catalog',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(x=>{if(active){setCatalog(Array.isArray(x.data)?x.data:[]);setCatalogNotice(x.warning||'')}}).catch(()=>{if(active)setCatalogNotice('المنتجات غير متاحة دلوقتي؛ تقدر تضيفها يدويًا')});return()=>{active=false}},[auth,brand]);
  async function reload(){setBusy(true);setErr('');try{const [a,b,c]=await Promise.all([api('orders'),api('customers'),api('waybills')]);setOrders(a.data);setCustomers(b.data);setWaybills(c.data);setLoaded(true)}catch(e){setErr((e as Error).message)}finally{setBusy(false)}}
+ useEffect(()=>{if(auth)void reload()},[auth]);
  useEffect(()=>{
   if(!auth)return;
   let active=true;
