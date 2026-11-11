@@ -542,7 +542,9 @@ button.stat{text-align:start;cursor:pointer;font:inherit;color:inherit}
 }
 .formgrid > .full{grid-column:1/-1}
 .table td.order-actions{max-width:none;overflow:visible}
-.order-actions .links{flex-wrap:wrap}
+.table td:has(.links){max-width:none;overflow:visible;width:1%}
+.table .links{flex-wrap:nowrap;width:max-content}
+.table .links .btn.tiny{flex:none;padding-inline:8px}
 .formgrid > .full:has(.product-option){min-width:0}
 .product-option{margin-block:5px}
 

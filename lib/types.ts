@@ -1,7 +1,7 @@
 export type Brand = 'homey' | 'sodfa';
 export type Status = 'new'|'contacted'|'confirmed'|'preparing'|'shipped'|'delivered'|'cancelled'|'returned';
 export type Item = {name:string; sku:string; quantity:number; price:number; imageUrl?:string};
-export type Order = {id:string; brand:Brand; createdAt:string; updatedAt:string; version:number; customerName:string; phone:string; alternatePhone:string; governorate:string; city:string; address:string; source:string; paymentMethod:string; prepaid:number; shipping:number; discount:number; items:Item[]; status:Status; notes:string; assignedTo:string; deletedAt:string;};
+export type Order = {id:string; enteredAt?:string; brand:Brand; createdAt:string; updatedAt:string; version:number; customerName:string; phone:string; alternatePhone:string; governorate:string; city:string; address:string; source:string; paymentMethod:string; prepaid:number; shipping:number; discount:number; items:Item[]; status:Status; notes:string; assignedTo:string; deletedAt:string;};
 export type Customer = {id:string; brand:Brand; name:string; phone:string; alternatePhone:string; governorate:string; city:string; address:string; notes:string; createdAt:string; updatedAt:string; deletedAt:string};
 export const statuses:Status[]=['new','contacted','confirmed','preparing','shipped','delivered','cancelled','returned'];
 export const statusLabels:Record<Status,string>={new:'جديد',contacted:'تم التواصل',confirmed:'مؤكد',preparing:'قيد التجهيز',shipped:'قيد الشحن',delivered:'تم التسليم',cancelled:'تم الإلغاء',returned:'مرتجع'};

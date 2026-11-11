@@ -6,13 +6,13 @@ function sql(){
  if(!url)throw new Error('Neon database is not configured');
  return neon(url);
 }
-const orderFields:Record<string,string>={createdAt:'created_at',updatedAt:'updated_at',customerName:'customer_name',alternatePhone:'alternate_phone',paymentMethod:'payment_method',assignedTo:'assigned_to',deletedAt:'deleted_at'};
+const orderFields:Record<string,string>={enteredAt:'entered_at',createdAt:'created_at',updatedAt:'updated_at',customerName:'customer_name',alternatePhone:'alternate_phone',paymentMethod:'payment_method',assignedTo:'assigned_to',deletedAt:'deleted_at'};
 const customerFields:Record<string,string>={alternatePhone:'alternate_phone',createdAt:'created_at',updatedAt:'updated_at',deletedAt:'deleted_at'};
 function fromDb<T>(row:Record<string,unknown>,fields:Record<string,string>):T{
  const reverse=Object.fromEntries(Object.entries(fields).map(([a,b])=>[b,a]));
  const obj=Object.fromEntries(Object.entries(row).map(([k,v])=>[reverse[k]||k,v]));
  for(const k of ['prepaid','shipping','discount','version'])if(k in obj)obj[k]=Number(obj[k]??0);
- for(const k of ['createdAt','updatedAt','deletedAt'])if(obj[k] instanceof Date)obj[k]=(obj[k] as Date).toISOString();
+ for(const k of ['enteredAt','createdAt','updatedAt','deletedAt'])if(obj[k] instanceof Date)obj[k]=(obj[k] as Date).toISOString();
  if('deletedAt' in obj && obj.deletedAt==null)obj.deletedAt='';
  return obj as T;
 }
@@ -21,7 +21,15 @@ const customer=(row:Record<string,unknown>)=>fromDb<Customer>(row,customerFields
 const orderDate=(v:string)=>/^\d{4}-\d{2}-\d{2}$/.test(v)?v+'T12:00:00+02:00':new Date(v).toISOString();
 
 export async function getOrders():Promise<Order[]>{
- const rows=await sql()`SELECT * FROM public.orders WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT 5000`;
+ const rows=await sql()`SELECT o.*, COALESCE(a.entered_at, CASE WHEN o.version = 1 THEN o.updated_at END, o.created_at) AS entered_at
+  FROM public.orders o
+  LEFT JOIN (
+   SELECT entity_id, min(created_at) AS entered_at
+   FROM public.audit_log WHERE entity = 'order' AND action = 'create'
+   GROUP BY entity_id
+  ) a ON a.entity_id = o.id::text
+  WHERE o.deleted_at IS NULL
+  ORDER BY entered_at DESC, o.id DESC LIMIT 5000`;
  return rows.map(order);
 }
 export async function saveOrder(input:Order):Promise<Order>{
