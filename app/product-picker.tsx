@@ -4,19 +4,24 @@ import {useState} from 'react';
 import {Package} from 'lucide-react';
 import type {Item} from '@/lib/types';
 
+function ProductThumbnail({imageUrl,imageUrls}:{imageUrl?:string;imageUrls?:string[]}){
+ const sources=[...new Set([imageUrl,...(imageUrls??[])].filter((url):url is string=>typeof url==='string'&&/^https?:\/\//i.test(url)))];
+ const [failed,setFailed]=useState<string[]>([]);
+ const source=sources.find(url=>!failed.includes(url));
+ return source
+  ? <img key={source} src={source} alt="" referrerPolicy="no-referrer" loading="lazy" onError={()=>setFailed(previous=>[...previous,source])}/>
+  : <Package aria-hidden="true"/>;
+}
+
 export function ProductPicker({item,products,onChange}:{item:Item;products:Item[];onChange:(patch:Partial<Item>)=>void}){
  const [open,setOpen]=useState(false);
  const [query,setQuery]=useState('');
  const [manual,setManual]=useState(false);
  const matches=products.filter(product=>[product.name,product.sku].join(' ').toLowerCase().includes(query.trim().toLowerCase()));
- function thumbnail(url?:string){
-  return url&&/^https?:\/\//i.test(url)
-   ? <img src={url} alt="" referrerPolicy="no-referrer" loading="lazy"/>
-   : <Package aria-hidden="true"/>;
- }
+ const catalogItem=products.find(product=>product.sku===item.sku&&product.name===item.name);
  return <div className="full">
   <span className="muted">المنتج</span>
-  {item.name&&!manual&&<div className="product-option">{thumbnail(item.imageUrl||products.find(product=>product.sku===item.sku&&product.name===item.name)?.imageUrl)}<span title={item.name}>{item.name}</span></div>}
+  {item.name&&!manual&&<div className="product-option">{<ProductThumbnail imageUrl={item.imageUrl||catalogItem?.imageUrl} imageUrls={catalogItem?.imageUrls}/>}<span title={item.name}>{item.name}</span></div>}
   <div className="toolbar">
    <button type="button" className="btn tiny secondary" aria-expanded={open} onClick={()=>{setOpen(!open);setQuery('')}}>{item.name?'اختيار منتج تاني':'ابحث عن منتج'}</button>
    <button type="button" className="btn tiny secondary" onClick={()=>{setManual(!manual);setOpen(false)}}>{manual?'إغلاق التعديل اليدوي':item.name?'تعديل بيانات المنتج':'إدخال منتج يدويًا'}</button>
@@ -25,10 +30,10 @@ export function ProductPicker({item,products,onChange}:{item:Item;products:Item[
   {open&&<>
    <input className="field" aria-label="بحث عن منتج" placeholder="ابحث بالاسم أو SKU" value={query} onChange={e=>setQuery(e.target.value)}/>
    <div className="product-results">
-    {matches.slice(0,20).map(product=><button key={product.sku+'|'+product.name} type="button" className="btn secondary product-option" title={product.name} onClick={()=>{
+    {matches.map(product=><button key={product.sku+'|'+product.name} type="button" className="btn secondary product-option" title={product.name} onClick={()=>{
      onChange({name:product.name,sku:product.sku,price:product.price,imageUrl:product.imageUrl});
      setOpen(false);setManual(false);
-    }}>{thumbnail(product.imageUrl)}<span>{product.name}</span></button>)}
+    }}><ProductThumbnail imageUrl={product.imageUrl} imageUrls={product.imageUrls}/><span>{product.name}</span></button>)}
     {!matches.length&&<small className="muted">مفيش نتائج مطابقة. تقدر تدخل اسم المنتج يدويًا.</small>}
    </div>
   </>}
