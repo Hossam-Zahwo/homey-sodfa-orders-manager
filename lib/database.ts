@@ -6,12 +6,12 @@ function sql(){
  if(!url)throw new Error('Neon database is not configured');
  return neon(url);
 }
-const orderFields:Record<string,string>={enteredAt:'entered_at',createdAt:'created_at',updatedAt:'updated_at',customerName:'customer_name',alternatePhone:'alternate_phone',paymentMethod:'payment_method',assignedTo:'assigned_to',deletedAt:'deleted_at'};
+const orderFields:Record<string,string>={carrierReceived:'carrier_received',shippingCompany:'shipping_company',enteredAt:'entered_at',createdAt:'created_at',updatedAt:'updated_at',customerName:'customer_name',alternatePhone:'alternate_phone',paymentMethod:'payment_method',assignedTo:'assigned_to',deletedAt:'deleted_at'};
 const customerFields:Record<string,string>={alternatePhone:'alternate_phone',createdAt:'created_at',updatedAt:'updated_at',deletedAt:'deleted_at'};
 function fromDb<T>(row:Record<string,unknown>,fields:Record<string,string>):T{
  const reverse=Object.fromEntries(Object.entries(fields).map(([a,b])=>[b,a]));
  const obj=Object.fromEntries(Object.entries(row).map(([k,v])=>[reverse[k]||k,v]));
- for(const k of ['prepaid','shipping','discount','version'])if(k in obj)obj[k]=Number(obj[k]??0);
+ for(const k of ['prepaid','shipping','discount','carrierReceived','version'])if(k in obj)obj[k]=Number(obj[k]??0);
  for(const k of ['enteredAt','createdAt','updatedAt','deletedAt'])if(obj[k] instanceof Date)obj[k]=(obj[k] as Date).toISOString();
  if('deletedAt' in obj && obj.deletedAt==null)obj.deletedAt='';
  return obj as T;
@@ -29,7 +29,7 @@ export async function getOrders():Promise<Order[]>{
    GROUP BY entity_id
   ) a ON a.entity_id = o.id::text
   WHERE o.deleted_at IS NULL
-  ORDER BY entered_at DESC, o.id DESC LIMIT 5000`;
+  ORDER BY entered_at DESC, o.id DESC`;
  return rows.map(order);
 }
 export async function saveOrder(input:Order):Promise<Order>{
@@ -42,6 +42,7 @@ export async function saveOrder(input:Order):Promise<Order>{
    source=${input.source||''},payment_method=${input.paymentMethod||''},
    prepaid=${input.prepaid},shipping=${input.shipping},discount=${input.discount},
    items=${JSON.stringify(input.items)}::jsonb,status=${input.status},
+   shipping_company=COALESCE(${input.shippingCompany??null},shipping_company),carrier_received=COALESCE(${input.carrierReceived??null},carrier_received),
    notes=${input.notes||''},assigned_to=${input.assignedTo||''},version=version+1
    WHERE id=${input.id}::uuid AND version=${input.version} AND deleted_at IS NULL RETURNING *`;
   if(!rows.length)throw new Error('CONFLICT');
@@ -49,10 +50,10 @@ export async function saveOrder(input:Order):Promise<Order>{
  }
  const rows=await db`INSERT INTO public.orders
   (brand,created_at,customer_name,phone,alternate_phone,governorate,city,address,source,payment_method,
-   prepaid,shipping,discount,items,status,notes,assigned_to)
+   prepaid,shipping,discount,items,status,shipping_company,carrier_received,notes,assigned_to)
   VALUES (${input.brand},${date}::timestamptz,${input.customerName.trim()},${input.phone},${input.alternatePhone||''},
   ${input.governorate||''},${input.city||''},${input.address||''},${input.source||''},${input.paymentMethod||''},
-  ${input.prepaid},${input.shipping},${input.discount},${JSON.stringify(input.items)}::jsonb,${input.status},
+  ${input.prepaid},${input.shipping},${input.discount},${JSON.stringify(input.items)}::jsonb,${input.status},${input.shippingCompany??''},${input.carrierReceived??0},
   ${input.notes||''},${input.assignedTo||''}) RETURNING *`;
  return order(rows[0]);
 }
@@ -104,4 +105,17 @@ export async function recordPrintHistory(keys:string[]){
    SELECT 1 FROM public.audit_log
    WHERE action='print' AND entity='print_document' AND entity_id=key
   )`;
+}
+
+export async function getShippingCompanies():Promise<string[]>{
+ const rows=await sql()`SELECT name FROM public.shipping_companies
+ UNION SELECT shipping_company FROM public.orders WHERE deleted_at IS NULL AND shipping_company <> ''
+ ORDER BY name`;
+ return rows.map(row=>String(row.name));
+}
+
+export async function addShippingCompany(name:string):Promise<string>{
+ const rows=await sql()`INSERT INTO public.shipping_companies(name) VALUES (${name})
+ ON CONFLICT ((lower(name))) DO UPDATE SET name=shipping_companies.name RETURNING name`;
+ return String(rows[0].name);
 }

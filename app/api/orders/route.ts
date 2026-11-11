@@ -22,8 +22,10 @@ function validationError(o:Order){
  }
  if(!statuses.includes(o.status))return 'اختار حالة صحيحة للطلب.';
  if([o.shipping,o.discount,o.prepaid].some(value=>!Number.isFinite(value)||value<0))return 'راجع مبالغ الشحن والخصم والمدفوع مقدمًا.';
+ if(o.shippingCompany!==undefined&&(typeof o.shippingCompany!=='string'||o.shippingCompany.length>120))return 'راجع اسم شركة الشحن.';
+ if(o.carrierReceived!==undefined&&(!Number.isFinite(o.carrierReceived)||o.carrierReceived<0||o.carrierReceived>999999999999.99||Math.abs(o.carrierReceived-Math.round(o.carrierReceived*100)/100)>1e-8))return 'راجع المبلغ المستلم من شركة الشحن.';
  return '';
 }
 export async function GET(r:Request){const blocked=await requireAccess(r);if(blocked)return blocked;try{return NextResponse.json({data:await getOrders()})}catch(e){return replyError(e)}}
-export async function POST(r:Request){const blocked=await requireAccess(r);if(blocked)return blocked;try{const o=await r.json() as Order;const error=validationError(o);if(error)return NextResponse.json({error},{status:400});const saved=await saveOrder({...o,customerName:o.customerName.trim(),phone:normalizePhone(o.phone)});await audit(o.id?'update':'create','order',saved.id,saved.brand,saved.status).catch(console.error);return NextResponse.json({data:saved})}catch(e){return replyError(e)}}
+export async function POST(r:Request){const blocked=await requireAccess(r);if(blocked)return blocked;try{const o=await r.json() as Order;const error=validationError(o);if(error)return NextResponse.json({error},{status:400});const saved=await saveOrder({...o,customerName:o.customerName.trim(),phone:normalizePhone(o.phone)});await audit(o.id?'update':'create','order',saved.id,saved.brand,JSON.stringify({status:saved.status,shippingCompany:saved.shippingCompany,carrierReceived:saved.carrierReceived})).catch(console.error);return NextResponse.json({data:saved})}catch(e){return replyError(e)}}
 export async function DELETE(r:Request){const blocked=await requireAccess(r);if(blocked)return blocked;try{const {id,version}=await r.json();if(typeof id!=='string'||!Number.isInteger(version))return NextResponse.json({error:'Invalid request'},{status:400});const o=await removeOrder(id,version);await audit('delete','order',id,o.brand,'soft deleted').catch(console.error);return NextResponse.json({ok:true})}catch(e){return replyError(e)}}

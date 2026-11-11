@@ -18,7 +18,9 @@ CREATE TABLE IF NOT EXISTS public.orders (
   shipping numeric(14,2) NOT NULL DEFAULT 0 CHECK (shipping>=0),
   discount numeric(14,2) NOT NULL DEFAULT 0 CHECK (discount>=0),
   items jsonb NOT NULL DEFAULT '[]'::jsonb,
-  status text NOT NULL DEFAULT 'new' CHECK(status IN ('new','contacted','confirmed','preparing','shipped','delivered','cancelled','returned')),
+  status text NOT NULL DEFAULT 'new' CHECK(status IN ('new','contacted','confirmed','preparing','shipped','delivered','cancelled','returned','postponed','refused')),
+  shipping_company text NOT NULL DEFAULT '' CHECK (length(shipping_company)<=120),
+  carrier_received numeric(14,2) NOT NULL DEFAULT 0 CHECK (carrier_received>=0),
   notes text NOT NULL DEFAULT '',
   assigned_to text NOT NULL DEFAULT '',
   deleted_at timestamptz
@@ -57,3 +59,10 @@ CREATE TABLE IF NOT EXISTS public.staff_users (
  created_at timestamptz NOT NULL DEFAULT now(),
  updated_at timestamptz NOT NULL DEFAULT now()
 );
+BEGIN;
+CREATE TABLE IF NOT EXISTS public.shipping_companies (
+ name text NOT NULL CHECK (char_length(name) BETWEEN 2 AND 120),
+ created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS shipping_companies_name_idx ON public.shipping_companies (lower(name));
+COMMIT;

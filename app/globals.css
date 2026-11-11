@@ -576,3 +576,88 @@ button.stat{text-align:start;cursor:pointer;font:inherit;color:inherit}
 .print-badge{display:block;width:max-content;margin-top:4px;padding:2px 8px;border-radius:999px;background:#fff1c6;color:#704600;font-size:11px}
 .print-badge.printed{background:#e7f3e7;color:#285932}
 .product-option img{width:44px;height:44px;object-fit:contain;flex:none;border-radius:6px;background:#fff}
+
+/* Shipping and collection dashboard */
+.tracking-overview h2 { margin: 0 0 .65rem; font-size: 1.1rem; }
+.tracking-overview h2:not(:first-child) { margin-top: 1.15rem; }
+.tracking-grid { display: grid; gap: .65rem; }
+.tracking-shipping { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.tracking-finance { grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); margin-bottom: .75rem; }
+.tracking-card,.tracking-select { color: var(--tracking-ink,#374151); background: var(--tracking-bg,#f2f3f5); border: 1px solid color-mix(in srgb, currentColor 13%, transparent); }
+.tracking-card { min-height: 79px; display: grid; gap: .3rem; place-content: center; padding: .65rem; border-radius: 11px; text-align: center; font: inherit; }
+button.tracking-card { cursor: pointer; }
+button.tracking-card:hover { border-color: currentColor; }
+.tracking-card strong { font-size: 1.4rem; }
+.tracking-shipped { --tracking-ink:#174b86; --tracking-bg:#e6f0ff; }
+.tracking-delivered,.tracking-paid { --tracking-ink:#285416; --tracking-bg:#eaf4e0; }
+.tracking-postponed,.tracking-partial { --tracking-ink:#814b00; --tracking-bg:#fff2d6; }
+.tracking-cancelled,.tracking-none { --tracking-ink:#47515d; --tracking-bg:#eef0f2; }
+.tracking-refused,.tracking-unpaid { --tracking-ink:#a52525; --tracking-bg:#fde9e8; }
+.tracking-returned { --tracking-ink:#65328e; --tracking-bg:#f1e6fa; }
+.tracking-select { min-height: 34px; min-width: 125px; border-radius: 8px; padding-inline: .4rem; font: inherit; cursor: pointer; }
+.tracking-select option { background: white; color: #242723; }
+.tracking-edit-amount { border: none; padding: .25rem; background: transparent; color: var(--primary); cursor: pointer; vertical-align: middle; }
+.tracking-table-scroll { width: 100%; overflow-x: auto; }
+.tracking-table th,.tracking-table td { white-space: nowrap; }
+.tracking-table thead th { background: var(--soft); }
+.tracking-table td { font-variant-numeric: tabular-nums; }
+.tracking-report-bars { display: grid; gap: .6rem; margin: 1rem 0; }
+.tracking-report-bars > div { display: grid; grid-template-columns: minmax(8rem, 1fr) 3fr 2rem; align-items: center; gap: .65rem; }
+.tracking-report-bars progress { width: 100%; accent-color: var(--primary); }
+.tracking-settings label,.tracking-collection label { display: grid; gap: .45rem; margin-bottom: .8rem; }
+.tracking-settings select { width: min(100%, 18rem); }
+.tracking-collection { max-width: 480px; }
+.tracking-history { width: min(95vw, 1350px); max-width: none; }
+@media (max-width: 1050px) { .tracking-shipping { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .tracking-shipping,.tracking-finance { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.app { background: #f7f6f1; }
+.app .sidebar { background: #faf9f5; color: #272b20; border-inline-end: 1px solid #e5e4da; box-shadow: none; }
+.app .nav button { color: #3a3e31; }
+.app .nav button.active,.app .nav button.active:hover { color: #fff; background: var(--primary); }
+.app .sidebar-bottom,.app .sidebar-caption,.app .sidebar-mobile-header { color: #52594a; }
+.tracking-table th,.tracking-table td { padding-inline: 9px; }
+.tracking-table thead th { color: #3b4637; font-weight: 700; }
+.app[data-brand] .sidebar .nav button { color: #303728; }
+.app[data-brand] .sidebar .nav button:hover { color: #303728; background: var(--soft); }
+.app[data-brand] .sidebar .nav button.active,
+.app[data-brand] .sidebar .nav button.active:hover { color: #fff; background: var(--primary); }
+.app[data-brand] .sidebar .nav .label { display: inline !important; font-size: .9rem; white-space: normal; overflow: visible; }
+.app[data-brand] .sidebar .sidebar-mobile-header button { color: #303728; border-color: #d8ddce; }
+.tracking-add-company { margin-bottom: 1rem; }
+.tracking-add-company label { font-weight: 700; }
+
+.app[data-brand="sodfa"] .sidebar {
+  background: #2d1c40;
+  color: #fff;
+}
+.app[data-brand="sodfa"] .sidebar :is(.sidebar-caption,.sidebar-bottom,.sidebar-bottom small,.sidebar-bottom svg,.sidebar-mobile-header,.sidebar-mobile-header button) {
+  color: #fff;
+}
+.app[data-brand="sodfa"] .sidebar .nav button {
+  color: #fff;
+}
+.app[data-brand="sodfa"] .sidebar .nav button.active {
+  background: #713cad;
+  color: #fff;
+}
+.app[data-brand="sodfa"] .sidebar .nav button:is(:hover,:focus-visible),
+.app[data-brand="sodfa"] .sidebar .nav button.active:is(:hover,:focus-visible) {
+  background: #fff;
+  color: #111;
+}
+
+.switch-sodfa-logo {
+  display: block;
+  width: 80px;
+  height: auto;
+  max-height: 31px;
+  object-fit: contain;
+}
+@media (max-width: 600px) {
+  .switch-sodfa-logo { width: 74px; }
+}
+@media (max-width: 420px) {
+  .switch-sodfa-logo { width: 60px; max-height: 27px; }
+}
+.tracking-awaiting-update { display: block; margin-top: .3rem; color: #174b86; }
+.tracking-table td.tracking-order-detail { min-width: 160px; max-width: 240px; white-space: normal; overflow-wrap: anywhere; }
