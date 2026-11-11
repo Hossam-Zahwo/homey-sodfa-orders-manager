@@ -1,4 +1,5 @@
 'use client';
+import {printDocuments,printKeys} from '@/lib/print-history';
 import {useEffect,useState} from 'react';
 import type {Waybill} from '@/lib/types';
 import {WaybillPrintSheets} from '@/components/waybill-print-sheets';
@@ -35,7 +36,7 @@ export default function WaybillPrint({params}:{params:Promise<{id:string}>}){
      <label>عدد البوالص في ورقة A4
       <select value={perPage} onChange={e=>setPerPage(Number(e.target.value) as 3|4)}><option value={4}>4 بوالص</option><option value={3}>3 بوالص</option></select>
      </label>
-     <button onClick={()=>window.print()}>طباعة / حفظ PDF</button>
+     <button onClick={()=>void printDocuments(printKeys([{...record,id:record.orderId}])).catch(()=>alert('اتفتح مربع الطباعة، لكن حالة الطباعة ما اتحفظتش.'))}>طباعة / حفظ PDF</button>
     </div>
    </div>
    <p className="shipping-print-help">دي معاينة ملصق الشحن المختصر. لو بتطبع بوليصة واحدة هتظهر في أول مكان من الورقة، وتقدر تجمع 3 أو 4 بوالص من صفحة «البوالص».</p>

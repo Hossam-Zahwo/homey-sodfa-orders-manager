@@ -572,3 +572,7 @@ button.stat{text-align:start;cursor:pointer;font:inherit;color:inherit}
 .shipping-sheets-4 .shipping-label-header{padding-bottom:2mm}
 .shipping-sheets-4 .shipping-label-detail{margin-top:1.5mm}
 .shipping-sheets-4 .shipping-label-note strong{font-size:12px}
+
+.print-badge{display:block;width:max-content;margin-top:4px;padding:2px 8px;border-radius:999px;background:#fff1c6;color:#704600;font-size:11px}
+.print-badge.printed{background:#e7f3e7;color:#285932}
+.product-option img{width:44px;height:44px;object-fit:contain;flex:none;border-radius:6px;background:#fff}

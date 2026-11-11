@@ -90,3 +90,18 @@ export async function audit(action:string,entity:string,entityId:string,brand:st
  await sql()`INSERT INTO public.audit_log(actor,action,entity,entity_id,brand,details)
  VALUES (${actor},${action},${entity},${entityId},${brand},${details})`;
 }
+
+export async function getPrintHistory(){
+ const rows=await sql()`SELECT DISTINCT entity_id FROM public.audit_log WHERE action='print' AND entity='print_document'`;
+ return rows.map(row=>String(row.entity_id));
+}
+
+export async function recordPrintHistory(keys:string[]){
+ await sql()`INSERT INTO public.audit_log(actor,action,entity,entity_id,brand,details)
+  SELECT 'authorized-user','print','print_document',key,'', ''
+  FROM unnest(${keys}::text[]) AS documents(key)
+  WHERE NOT EXISTS (
+   SELECT 1 FROM public.audit_log
+   WHERE action='print' AND entity='print_document' AND entity_id=key
+  )`;
+}

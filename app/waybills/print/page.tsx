@@ -1,4 +1,5 @@
 'use client';
+import {printDocuments,printKeys} from '@/lib/print-history';
 import {useEffect,useState} from 'react';
 import type {Waybill} from '@/lib/types';
 import {WaybillPrintSheets} from '@/components/waybill-print-sheets';
@@ -47,7 +48,7 @@ export default function BatchWaybillPrint(){
        <option value={3}>3 بوالص / ورقة</option>
       </select>
      </label>
-     <button onClick={()=>window.print()}>طباعة / حفظ PDF</button>
+     <button onClick={()=>void printDocuments(printKeys(waybills.map(w=>({...w,id:w.orderId})))).catch(()=>alert('اتفتح مربع الطباعة، لكن حالة الطباعة ما اتحفظتش.'))}>طباعة / حفظ PDF</button>
     </div>
    </div>
    <p className="shipping-print-help">تاريخ الطباعة مستقل عن تاريخ إنشاء الأوردر. غير التاريخ العام فوق، أو خصّص تاريخ بوليصة بعينها من الجدول ده. التعديلات هنا للطباعة فقط ولا تغيّر تاريخ الطلب المحفوظ.</p>

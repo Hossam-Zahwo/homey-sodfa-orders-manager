@@ -1,4 +1,5 @@
 'use client';
+import {printDocuments,printKeys} from '@/lib/print-history';
 import {useEffect,useState} from 'react';
 import {Printer,ArrowRight,ShoppingBag} from 'lucide-react';
 import type {Order} from '@/lib/types';
@@ -12,7 +13,7 @@ export default function Invoice({params}:{params:Promise<{id:string}>}){
  if(err||!order)return <main className="invoice-state">{err||'الفاتورة غير متاحة'} <a href="/">رجوع</a></main>;
  const subtotal=order.items.reduce((v,x)=>v+x.price*x.quantity,0);
  return <main dir="rtl" className="invoice-page">
-  <div className="invoice-actions"><a href="/"><ArrowRight size={17}/> الرجوع للطلبات</a><button onClick={()=>window.print()}><Printer size={18}/> طباعة / حفظ PDF</button></div>
+  <div className="invoice-actions"><a href="/"><ArrowRight size={17}/> الرجوع للطلبات</a><button onClick={()=>void printDocuments(printKeys([order])).catch(()=>alert('اتفتح مربع الطباعة، لكن حالة الطباعة ما اتحفظتش.'))}><Printer size={18}/> طباعة / حفظ PDF</button></div>
   <article className="invoice-paper">
    <header className="invoice-head"><div><div className="invoice-logo">{order.brand==='homey'?<HomeyLogo className="invoice-homey-logo"/>:<><ShoppingBag size={27}/><span>صدفة | SODFA</span></>}</div><p>فاتورة طلب شراء</p></div><div className="invoice-ref"><strong>#{order.id.slice(0,8).toUpperCase()}</strong><span>تاريخ الطلب: {new Date(order.createdAt).toLocaleDateString('en-GB')}</span></div></header>
    <div className="invoice-banner">فاتورة شراء</div>
