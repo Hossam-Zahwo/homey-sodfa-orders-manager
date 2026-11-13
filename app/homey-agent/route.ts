@@ -103,8 +103,8 @@ const normalizeCatalogText = text => text.toLowerCase().normalize("NFKC")
 
 const questionFields = [
   [/خامة|خامت[هها]|معمول من|مصنوع من|ازاز ولا|بلاستيك ولا/u, /خام[هة]|مصنوع|زجاج|بامبو|خيزران|ستانلس/u],
-  [/سعة|يسع|سعته|بياخد كام|كام مل|كام لتر/u, /سع[هة]|مل(?:ليلتر)?|لتر/u],
-  [/مقاس|أبعاد|ابعاد|طوله|عرضه|ارتفاع/u, /ابعاد|مقاس|ارتفاع|العرض|الطول|سم/u],
+  [/سعة|يسع|سعته|بياخد كام|كام مل|كام لتر/u, /سع[هة]|(?:^|\s)(?:مل|مليلتر(?:ات)?|لتر)(?:\s|$)/u],
+  [/مقاس|أبعاد|ابعاد|طوله|عرضه|ارتفاع/u, /ابعاد|مقاس|ارتفاع|العرض|الطول|(?:^|\s)سم(?:\s|$)/u],
   [/لون|ألوان|الوان/u, /لون|شفاف|بيج|اسود|ابيض|رمادي/u],
   [/معاه|معاها|بيجي مع|شامل|مرفق|مكونات/u, /مرفق|ياتي|يجي|متضمن|ملعق|غطاء/u],
   [/طريقة|استخدم|استخدام|ينفع لايه/u, /استخدام|مناسب|يستخدم/u],
@@ -112,7 +112,7 @@ const questionFields = [
 ];
 
 function catalogReply(product, message) {
-  const field = questionFields.find(([pattern]) => pattern.test(message));
+  const field = questionFields.find(([pattern]) => pattern.test(message.normalize("NFKC").replace(/[\u064B-\u065F]/g, "")));
   if (!field) return null;
   const [, target] = field;
   const spec = (product.specs || []).find(([label]) => target.test(normalizeCatalogText(label)));
@@ -176,7 +176,7 @@ function receive(session, input, catalog = demoCatalog, selectedId = null, inten
     (purchase.test(message) && /(?:منه|منها)(?:\s|$)/u.test(message));
   const adQuestion = /^(?:(?:بكام|كام|السعر|سعره كام|سعرها كام|(?:ممكن )?تفاصيل|(?:عايز|عايزة|ممكن) أعرف التفاصيل|(?:ده|دي|دا) بكام|متوفر|متاحة|موجود)[؟?! .،]*)$/u;
   const adProduct = adQuestion.test(message) ? catalog.find(product => product.id === adProductId) : null;
-  const detailQuestion = questionFields.some(([pattern]) => pattern.test(message));
+  const detailQuestion = questionFields.some(([pattern]) => pattern.test(message.normalize("NFKC").replace(/[\u064B-\u065F]/g, "")));
   const product = matches[0] ?? ((followUp || detailQuestion) ? session.product : null) ?? adProduct;
   if (!product) return "ممكن اسم المنتج أو لينك المنتج من هومي؟";
   session.product = product;
