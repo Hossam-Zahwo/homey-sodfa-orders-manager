@@ -102,7 +102,7 @@ const normalizeCatalogText = text => text.toLowerCase().normalize("NFKC")
   .replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 
 const questionFields = [
-  [/خامة|خامت[هها]|معمول من|مصنوع من|ازاز ولا|بلاستيك ولا/u, /خام[هة]|مصنوع|زجاج|بامبو|خيزران|ستانلس/u],
+  [/خامة|خامت[هها]|معمول من|مصنوع من|(?:^|\s)(?:زجاج|زجاجي|إزاز|ازاز|بلاستيك|بامبو|خيزران|استانلس|ستانلس)(?=\s|[؟?!،.]|$)/u, /خام[هة]|مصنوع|زجاج|بامبو|خيزران|ستانلس/u],
   [/سعة|يسع|سعته|بياخد كام|كام مل|كام لتر/u, /سع[هة]|(?:^|\s)(?:مل|مليلتر(?:ات)?|لتر)(?:\s|$)/u],
   [/مقاس|أبعاد|ابعاد|طوله|عرضه|ارتفاع/u, /ابعاد|مقاس|ارتفاع|العرض|الطول|(?:^|\s)سم(?:\s|$)/u],
   [/لون|ألوان|الوان/u, /لون|شفاف|بيج|اسود|ابيض|رمادي/u],
@@ -172,7 +172,7 @@ function receive(session, input, catalog = demoCatalog, selectedId = null, inten
   const matches = catalog.filter(product => selectedId ? product.id === selectedId : product.match.test(message));
   if (matches.length > 1) return "تقصد أنهي منتج؟ " + matches.slice(0, 5).map(product => product.name).join("، ");
   const quantity = quantityFrom(message);
-  const followUp = /^(?:سعره كام|سعرها كام|بكام|عايز أطلب|عاوز أطلب|عايزة أطلب|اطلب)$/u.test(message) ||
+  const followUp = /^(?:سعره كام|سعرها كام|بكام|كام|السعر|متوفر|متوفرة|موجود|موجودة|فيه منه|في منها|عايز أطلب|عاوز أطلب|عايزة أطلب|اطلب)[؟?! .،]*$/u.test(message) ||
     (purchase.test(message) && /(?:منه|منها)(?:\s|$)/u.test(message));
   const adQuestion = /^(?:(?:بكام|كام|السعر|سعره كام|سعرها كام|(?:ممكن )?تفاصيل|(?:عايز|عايزة|ممكن) أعرف التفاصيل|(?:ده|دي|دا) بكام|متوفر|متاحة|موجود)[؟?! .،]*)$/u;
   const adProduct = adQuestion.test(message) ? catalog.find(product => product.id === adProductId) : null;
