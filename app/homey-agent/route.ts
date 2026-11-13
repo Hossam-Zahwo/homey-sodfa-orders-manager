@@ -42,6 +42,8 @@ const pilotPage = String.raw`<!doctype html>
 <h2 id="chat-title">محادثة العميل</h2>
 <label for="channel">قناة المحاكاة</label>
 <select id="channel"><option>WhatsApp</option><option>Messenger</option><option>Instagram</option></select>
+<label for="ad-source">إعلان تجريبي</label>
+<select id="ad-source"><option value="">بدون إعلان</option><option value="demo-honey-jar">برطمان عسل</option><option value="demo-tissues">علبة مناديل</option></select>
 <div id="chat" class="chat" role="log" aria-label="رسائل المحادثة"></div>
 <form id="form"><input id="message" aria-label="رسالة العميل" placeholder="اكتب رسالة العميل" maxlength="250" required><button class="primary">إرسال</button></form>
 <div class="row"><button id="sample">تشغيل محادثة كاملة</button><button id="reset">ابدأ من جديد</button></div>
@@ -59,6 +61,7 @@ const pilotPage = String.raw`<!doctype html>
 "use strict";
 
 const demoCatalog = [
+  {id: "demo-honey-jar", name: "برطمان عسل", match: /برطمان\s+(?:ال)?عسل/u, price: 189, stock: 4},
   {id: "demo-tissues", name: "علبة مناديل", match: /مناديل/u, price: 149, stock: 5},
   {id: "demo-eggs", name: "منظم بيض", match: /بيض/u, price: 99, stock: 0},
 ];
@@ -93,12 +96,12 @@ function quantityFrom(message, collecting = false) {
 const newSession = channel => ({channel, step: "chat", product: null, quantity: 0, customer: {}});
 const normalizeDigits = input => input.replace(/[٠-٩۰-۹]/g, digit => String(digit.charCodeAt(0) & 15));
 
-function receive(session, input, catalog = demoCatalog, selectedId = null) {
+function receive(session, input, catalog = demoCatalog, selectedId = null, intent = null, adProductId = null) {
   const message = normalizeDigits(input.trim());
   if (session.step === "approved") return "الطلب اتراجع في التجربة.";
   if (session.step === "human") return "المحادثة مع فريق هومي للمراجعة.";
   if (session.step === "pending") return "الطلب عند فريق هومي للمراجعة.";
-  if (humanRequest.test(message)) {
+  if (humanRequest.test(message) || (session.step === "chat" && intent === "human")) {
     session.step = "human";
     return "حوّلت المحادثة لفريق هومي عشان يكمل معاك.";
   }
@@ -146,12 +149,15 @@ function receive(session, input, catalog = demoCatalog, selectedId = null) {
   const quantity = quantityFrom(message);
   const followUp = /^(?:سعره كام|سعرها كام|بكام|عايز أطلب|عاوز أطلب|عايزة أطلب|اطلب)$/u.test(message) ||
     (purchase.test(message) && /(?:منه|منها)(?:\s|$)/u.test(message));
-  const product = matches[0] ?? (followUp ? session.product : null);
+  const adQuestion = /^(?:(?:بكام|كام|السعر|سعره كام|سعرها كام|(?:ممكن )?تفاصيل|(?:عايز|عايزة|ممكن) أعرف التفاصيل|(?:ده|دي|دا) بكام|متوفر|متاحة|موجود)[؟?! .،]*)$/u;
+  const adProduct = adQuestion.test(message) ? catalog.find(product => product.id === adProductId) : null;
+  const product = matches[0] ?? (followUp ? session.product : null) ?? adProduct;
   if (!product) return "ممكن اسم المنتج أو لينك المنتج من هومي؟";
   session.product = product;
   if (!product.stock) return product.name + " خلص حاليًا. ممكن أساعدك بمنتج تاني.";
   const availability = product.name + " بـ " + product.price + " جنيه للقطعة.";
-  if (!purchase.test(message) && !(request.test(message) && !question.test(message) && quantity !== null)) {
+  if (intent === "inquiry" || (intent !== "order" && !purchase.test(message) &&
+      !(request.test(message) && !question.test(message) && quantity !== null))) {
     return availability;
   }
   if (quantity !== null && quantity >= 1 && quantity <= product.stock) {
@@ -224,7 +230,7 @@ function renderOrder() {
 }
 function send(value) {
   bubble(value, "customer");
-  bubble(receive(session, value), "bot");
+  bubble(receive(session, value, demoCatalog, null, null, byId("ad-source").value), "bot");
   renderOrder();
 }
 function reset() {
@@ -278,6 +284,7 @@ liveToggle.addEventListener("click", () => syncLive(!liveState.enabled));
 liveRefresh.addEventListener("click", () => syncLive());
 syncLive();
 channel.addEventListener("change", reset);
+byId("ad-source").addEventListener("change", reset);
 byId("reset").addEventListener("click", reset);
 reset();
 </script>
