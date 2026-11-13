@@ -45,6 +45,7 @@ const pilotPage = String.raw`<!doctype html>
 <label for="ad-source">إعلان تجريبي</label>
 <select id="ad-source"><option value="">بدون إعلان</option><option value="demo-honey-jar">برطمان عسل</option><option value="demo-tissues">علبة مناديل</option></select>
 <p id="catalog-status" role="status">بنحمّل كتالوج هومي…</p>
+<p id="ai-status" role="status"></p>
 <div id="chat" class="chat" role="log" aria-label="رسائل المحادثة"></div>
 <form id="form"><input id="message" aria-label="رسالة العميل" placeholder="اكتب رسالة العميل" maxlength="250" required><button class="primary">إرسال</button></form>
 <div class="row"><button id="reset">ابدأ من جديد</button></div>
@@ -294,13 +295,35 @@ function renderOrder() {
     details.append(term, description);
   }
 }
-function send(value) {
+async function send(value) {
   bubble(value, "customer");
-  bubble(receive(session, value, catalog, null, null, byId("ad-source").value), "bot");
+  const active = session;
+  const wasChat = active.step === "chat";
+  const fallback = receive(active, value, catalog, null, null, byId("ad-source").value);
+  let reply = fallback;
+  if (wasChat && active.step === "chat" && active.product) {
+    submit.disabled = true;
+    try {
+      const response = await fetch("/homey-agent/ai", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({question: value, productId: active.product.id}),
+      });
+      const result = await response.json();
+      if (response.ok) reply = result.reply;
+      if (session === active) byId("ai-status").textContent = response.ok ? "آخر رد من OpenAI" : result.error;
+    } catch {
+      if (session === active) byId("ai-status").textContent = "تعذر الوصول لـ OpenAI.";
+    } finally {
+      submit.disabled = !ready;
+    }
+  }
+  if (session !== active) return;
+  bubble(reply, "bot");
   renderOrder();
 }
 function reset() {
   session = newSession(channel.value);
+  byId("ai-status").textContent = "";
   chat.replaceChildren();
   message.value = "";
   bubble("أهلًا بيك في هومي! بتدور على إيه؟", "bot");
@@ -308,7 +331,7 @@ function reset() {
 }
 byId("form").addEventListener("submit", event => {
   event.preventDefault();
-  if (ready && message.value.trim()) send(message.value.trim());
+  if (ready && !submit.disabled && message.value.trim()) send(message.value.trim());
   message.value = "";
 });
 byId("approve").addEventListener("click", () => {
