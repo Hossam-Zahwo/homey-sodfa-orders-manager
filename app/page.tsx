@@ -6,7 +6,7 @@ import {WaybillPrintSheets} from '@/components/waybill-print-sheets';
 import {useEffect,useState} from 'react';
 import {LayoutDashboard,Package,Users,Settings,LogOut,Plus,Download,Trash2,Pencil,RefreshCcw,ShoppingBag,CheckCircle2,Printer,FileText,FileDown,XCircle,ArrowUpLeft,ShieldCheck,Menu,X,Truck,ChartNoAxesCombined,ChevronDown} from 'lucide-react';
 import type {Brand,Order,Customer,Item,Waybill,Status} from '@/lib/types';
-import {statuses,statusLabels,govs,totalOf} from '@/lib/types';
+import {statuses,statusLabels,govs,calculatedTotal,totalOf} from '@/lib/types';
 import {HomeyLogo} from '@/components/homey-logo';
 
 import {carrierAmounts,collectionLabels,collectionState,collectionStates,shippingStates,type CollectionState} from '@/lib/carrier-tracking';
@@ -405,8 +405,14 @@ export default function Page(){
      </div>)}
     </details>
     <div className="editor-total order-total-compact">
-     <div className="editor-grand"><span>الإجمالي شامل الشحن</span><strong>{money(totalOf(editing))}</strong></div>
-     {editing.prepaid>0&&<div><span>المطلوب بعد المدفوع مقدمًا</span><strong>{money(totalOf(editing)-editing.prepaid)}</strong></div>}
+     <label className="order-manual-total">
+      <span>السعر الإجمالي شامل الشحن (ج.م)</span>
+      <input className="field numeric-input" type="number" inputMode="decimal" min="0" max="999999999999.99" step="0.01"
+       placeholder={String(Number(calculatedTotal(editing).toFixed(2)))} value={editing.manualTotal??''}
+       onChange={e=>{const value=e.target.value;setEditing(order=>order?{...order,manualTotal:value===''?null:Number(value)}:order)}}/>
+      <small className="muted">الإجمالي التلقائي {money(calculatedTotal(editing))} · سيب الخانة فاضية لاستخدامه</small>
+     </label>
+     {editing.prepaid>0&&<div><span>المطلوب بعد المدفوع مقدمًا</span><strong>{money(Math.max(0,totalOf(editing)-editing.prepaid))}</strong></div>}
     </div>
     {err&&<div className="notice error" role="alert">{err}</div>}
     <div className="modalfooter">

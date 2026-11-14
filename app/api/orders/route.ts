@@ -25,6 +25,7 @@ function validationError(o:Order){
  if(!statuses.includes(o.status))return 'اختار حالة صحيحة للطلب.';
  if([o.shipping,o.discount,o.prepaid].some(value=>!Number.isFinite(value)||value<0))return 'راجع مبالغ الشحن والخصم والمدفوع مقدمًا.';
  if(o.shippingCompany!==undefined&&(typeof o.shippingCompany!=='string'||o.shippingCompany.length>120))return 'راجع اسم شركة الشحن.';
+ if(o.manualTotal!=null&&(!Number.isFinite(o.manualTotal)||o.manualTotal<0||o.manualTotal>999999999999.99||Math.abs(o.manualTotal-Math.round(o.manualTotal*100)/100)>1e-8))return 'راجع السعر الإجمالي. اكتب مبلغ بالجنيه بحد أقصى رقمين بعد العلامة العشرية.';
  if(o.carrierReceived!==undefined&&(!Number.isFinite(o.carrierReceived)||o.carrierReceived<0||o.carrierReceived>999999999999.99||Math.abs(o.carrierReceived-Math.round(o.carrierReceived*100)/100)>1e-8))return 'راجع المبلغ المستلم من شركة الشحن.';
  return '';
 }

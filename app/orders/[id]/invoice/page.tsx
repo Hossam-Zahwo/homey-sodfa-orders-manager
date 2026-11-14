@@ -3,7 +3,7 @@ import {printDocuments,printKeys} from '@/lib/print-history';
 import {useEffect,useState} from 'react';
 import {Printer,ArrowRight,ShoppingBag} from 'lucide-react';
 import type {Order} from '@/lib/types';
-import {totalOf} from '@/lib/types';
+import {calculatedTotal,totalOf} from '@/lib/types';
 import {HomeyLogo} from '@/components/homey-logo';
 const fmt=(n:number)=>new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+' ج.م';
 export default function Invoice({params}:{params:Promise<{id:string}>}){
@@ -12,6 +12,7 @@ export default function Invoice({params}:{params:Promise<{id:string}>}){
  if(loading)return <main className="invoice-state">جاري تحميل الفاتورة...</main>;
  if(err||!order)return <main className="invoice-state">{err||'الفاتورة غير متاحة'} <a href="/">رجوع</a></main>;
  const subtotal=order.items.reduce((v,x)=>v+x.price*x.quantity,0);
+ const manualAdjustment=Math.round((totalOf(order)-calculatedTotal(order))*100)/100;
  return <main dir="rtl" className="invoice-page">
   <div className="invoice-actions"><a href="/"><ArrowRight size={17}/> الرجوع للطلبات</a><button onClick={()=>void printDocuments(printKeys([order])).catch(()=>alert('اتفتح مربع الطباعة، لكن حالة الطباعة ما اتحفظتش.'))}><Printer size={18}/> طباعة / حفظ PDF</button></div>
   <article className="invoice-paper">
@@ -19,7 +20,7 @@ export default function Invoice({params}:{params:Promise<{id:string}>}){
    <div className="invoice-banner">فاتورة شراء</div>
    <section className="invoice-customer"><h2>بيانات العميل</h2><div className="invoice-details"><div><span>اسم العميل</span><strong>{order.customerName}</strong></div><div><span>رقم الهاتف</span><strong dir="ltr">{order.phone}</strong></div><div><span>عنوان التسليم</span><strong>{[order.governorate,order.city,order.address].filter(Boolean).join('، ')}</strong></div><div><span>رقم بديل</span><strong dir="ltr">{order.alternatePhone||'—'}</strong></div></div></section>
    <section><h2>تفاصيل الطلب</h2><table className="invoice-table"><thead><tr><th>المنتج</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>{order.items.map((x,i)=><tr key={i}><td>{x.name}{x.sku&&<small>SKU: {x.sku}</small>}</td><td>{x.quantity}</td><td>{fmt(x.price)}</td><td>{fmt(x.price*x.quantity)}</td></tr>)}</tbody></table></section>
-   <section className="invoice-summary"><div><span>إجمالي المنتجات</span><strong>{fmt(subtotal)}</strong></div>{order.discount>0&&<div><span>الخصم</span><strong>-{fmt(order.discount)}</strong></div>}<div className="invoice-final"><span>إجمالي الفاتورة شامل الشحن</span><strong>{fmt(totalOf(order))}</strong></div>{order.prepaid>0&&<div><span>المدفوع مقدمًا</span><strong>{fmt(order.prepaid)}</strong></div>}{order.prepaid>0&&<div><span>المتبقي للتحصيل</span><strong>{fmt(Math.max(0,totalOf(order)-order.prepaid))}</strong></div>}</section>
+   <section className="invoice-summary"><div><span>إجمالي المنتجات</span><strong>{fmt(subtotal)}</strong></div>{order.discount>0&&<div><span>الخصم</span><strong>-{fmt(order.discount)}</strong></div>}{order.shipping>0&&<div><span>الشحن</span><strong>{fmt(order.shipping)}</strong></div>}{manualAdjustment!==0&&<div><span>تعديل السعر الإجمالي</span><strong>{fmt(manualAdjustment)}</strong></div>}<div className="invoice-final"><span>إجمالي الفاتورة شامل الشحن</span><strong>{fmt(totalOf(order))}</strong></div>{order.prepaid>0&&<div><span>المدفوع مقدمًا</span><strong>{fmt(order.prepaid)}</strong></div>}{order.prepaid>0&&<div><span>المتبقي للتحصيل</span><strong>{fmt(Math.max(0,totalOf(order)-order.prepaid))}</strong></div>}</section>
    {order.notes&&<p className="invoice-notes"><b>ملاحظات:</b> {order.notes}</p>}
    <footer>شكرًا لتعاملك معنا<small>الفاتورة صادرة من نظام إدارة الطلبات الداخلي.</small></footer>
   </article>

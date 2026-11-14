@@ -6,12 +6,13 @@ function sql(){
  if(!url)throw new Error('Neon database is not configured');
  return neon(url);
 }
-const orderFields:Record<string,string>={carrierReceived:'carrier_received',shippingCompany:'shipping_company',enteredAt:'entered_at',createdAt:'created_at',updatedAt:'updated_at',customerName:'customer_name',alternatePhone:'alternate_phone',paymentMethod:'payment_method',assignedTo:'assigned_to',deletedAt:'deleted_at'};
+const orderFields:Record<string,string>={manualTotal:'manual_total',carrierReceived:'carrier_received',shippingCompany:'shipping_company',enteredAt:'entered_at',createdAt:'created_at',updatedAt:'updated_at',customerName:'customer_name',alternatePhone:'alternate_phone',paymentMethod:'payment_method',assignedTo:'assigned_to',deletedAt:'deleted_at'};
 const customerFields:Record<string,string>={alternatePhone:'alternate_phone',createdAt:'created_at',updatedAt:'updated_at',deletedAt:'deleted_at'};
 function fromDb<T>(row:Record<string,unknown>,fields:Record<string,string>):T{
  const reverse=Object.fromEntries(Object.entries(fields).map(([a,b])=>[b,a]));
  const obj=Object.fromEntries(Object.entries(row).map(([k,v])=>[reverse[k]||k,v]));
  for(const k of ['prepaid','shipping','discount','carrierReceived','version'])if(k in obj)obj[k]=Number(obj[k]??0);
+ if(obj.manualTotal!=null)obj.manualTotal=Number(obj.manualTotal);
  for(const k of ['enteredAt','createdAt','updatedAt','deletedAt'])if(obj[k] instanceof Date)obj[k]=(obj[k] as Date).toISOString();
  if('deletedAt' in obj && obj.deletedAt==null)obj.deletedAt='';
  return obj as T;
@@ -62,6 +63,7 @@ export async function saveOrder(input:Order):Promise<Order>{
    governorate=${input.governorate||''},city=${input.city||''},address=${input.address||''},
    source=${input.source||''},payment_method=${input.paymentMethod||''},
    prepaid=${input.prepaid},shipping=${input.shipping},discount=${input.discount},
+   manual_total=CASE WHEN ${input.manualTotal!==undefined} THEN ${input.manualTotal??null}::numeric ELSE manual_total END,
    items=${JSON.stringify(input.items)}::jsonb,status=${input.status},
    shipping_company=COALESCE(${input.shippingCompany??null},shipping_company),carrier_received=COALESCE(${input.carrierReceived??null},carrier_received),
    notes=${input.notes||''},assigned_to=${input.assignedTo||''},courier=COALESCE(${input.courier??null},courier),version=version+1
@@ -71,11 +73,11 @@ export async function saveOrder(input:Order):Promise<Order>{
  }
  const rows=await db`INSERT INTO public.orders
   (brand,created_at,customer_name,phone,alternate_phone,governorate,city,address,source,payment_method,
-   prepaid,shipping,discount,items,status,shipping_company,carrier_received,notes,assigned_to,courier)
+   prepaid,shipping,discount,items,status,shipping_company,carrier_received,notes,assigned_to,courier,manual_total)
   VALUES (${input.brand},${date}::timestamptz,${input.customerName.trim()},${input.phone},${input.alternatePhone||''},
   ${input.governorate||''},${input.city||''},${input.address||''},${input.source||''},${input.paymentMethod||''},
   ${input.prepaid},${input.shipping},${input.discount},${JSON.stringify(input.items)}::jsonb,${input.status},${input.shippingCompany??''},${input.carrierReceived??0},
-  ${input.notes||''},${input.assignedTo||''},${input.courier??''}) RETURNING *`;
+  ${input.notes||''},${input.assignedTo||''},${input.courier??''},${input.manualTotal??null}) RETURNING *`;
  return order(rows[0]);
 }
 export async function removeOrder(id:string,version:number):Promise<Order>{
