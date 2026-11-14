@@ -131,9 +131,7 @@ export async function recordPrintHistory(keys:string[]){
 }
 
 export async function getShippingCompanies():Promise<string[]>{
- const rows=await sql()`SELECT name FROM public.shipping_companies
- UNION SELECT shipping_company FROM public.orders WHERE deleted_at IS NULL AND shipping_company <> ''
- ORDER BY name`;
+ const rows=await sql()`SELECT name FROM public.shipping_companies ORDER BY name`;
  return rows.map(row=>String(row.name));
 }
 

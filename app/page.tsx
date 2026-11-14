@@ -109,7 +109,8 @@ export default function Page(){
  const periodOrders=brandOrders.filter(o=>inPeriod(o.enteredAt||o.createdAt));
  const matchesCarrier=(o:Order)=>!carrierFilter||(o.shippingCompany||'')===carrierFilter;
  const visible=periodOrders.filter(o=>matchesCarrier(o)&&(collectionFilter==='all'||collectionState(o)===collectionFilter)&&(tab!=='orders'||!unprintedOnly||!printed.has('order:'+o.id))&&(filter==='all'||(filter==='active'?o.status!=='cancelled':o.status===filter))&&[o.customerName,o.phone,o.id,o.address,o.items.map(i=>i.name).join(' ')].join(' ').toLowerCase().includes(search.toLowerCase()));
- const carrierNames=[...new Set([...shippingCompanies,...orders.flatMap(o=>o.brand===brand&&o.shippingCompany?[o.shippingCompany]:[])])].sort((a,b)=>a.localeCompare(b,'ar'));
+ const registeredCompanies=[...shippingCompanies].sort((a,b)=>a.localeCompare(b,'ar'));
+ const carrierNames=[...new Set([...registeredCompanies,...brandOrders.flatMap(o=>o.shippingCompany?[o.shippingCompany]:[])])].sort((a,b)=>a.localeCompare(b,'ar'));
  const reportOrders=periodOrders.filter(matchesCarrier);
  const totals=(rows:Order[])=>rows.reduce((acc,o)=>{
   const {due,received,remaining}=carrierAmounts(o);
@@ -296,11 +297,21 @@ export default function Page(){
  <button className="btn secondary" disabled={busy} onClick={()=>updateOrders(selectedOrders,'cancelled')}>إلغاء المحدد</button>
  <button className="btn danger" disabled={busy} onClick={()=>updateOrders(selectedOrders,'delete')}>حذف المحدد</button>
  </div>}{table(visible,true)}</section>}
- {tab==='carriers'&&<section className="panel"><div className="sectionhead"><h2>مستحقات شركات الشحن</h2>{carrierSelect()}</div>
+ {tab==='carriers'&&<>
+  <section className="panel">
+   <div className="sectionhead"><h2>شركات الشحن المسجّلة</h2></div>
   <form className="toolbar tracking-add-company" onSubmit={saveShippingCompany}>
    <label htmlFor="shipping-company-name">اسم شركة الشحن</label><input id="shipping-company-name" className="field" value={companyName} onChange={e=>setCompanyName(e.target.value)} required minLength={2} maxLength={120}/>
    <button className="btn" disabled={busy}><Plus size={16}/> إضافة شركة شحن</button>
-  </form>{companyError&&<p className="notice error" role="alert">{companyError}</p>}{financeSummary(reportOrders)}{carrierTable()}</section>}
+  </form>
+   {companyError&&<p className="notice error" role="alert">{companyError}</p>}
+   {registeredCompanies.length>0&&<ul className="registered-carriers">{registeredCompanies.map(name=><li key={name}>{name}</li>)}</ul>}
+  </section>
+  <section className="panel">
+   <div className="sectionhead"><h2>مستحقات شركات الشحن</h2>{carrierSelect()}</div>
+   {financeSummary(reportOrders)}{carrierTable()}
+  </section>
+ </>}
  {tab==='reports'&&<section className="panel"><div className="sectionhead"><h2>تقرير الشحن والتحصيل</h2>{carrierSelect()}</div>{financeSummary(reportOrders)}
   <div className="tracking-report-bars">{shippingStates.map(status=>{
    const count=reportOrders.filter(o=>o.status===status).length;
@@ -362,9 +373,11 @@ export default function Page(){
       <input className="field" required={!editing.id} value={editing.address} onChange={e=>setEditing({...editing,address:e.target.value})}/>
      </label>
      <label>شركة الشحن
-      <select className="field" value={editing.shippingCompany||''} onChange={e=>setEditing({...editing,shippingCompany:e.target.value})}>
-       <option value="">بدون شركة شحن</option>
-       {carrierNames.map(name=><option key={name}>{name}</option>)}
+      <select className="field" required={!editing.id} value={editing.shippingCompany?'company:'+editing.shippingCompany:editing.id||editing.shippingCompany===''?'self':''} onChange={e=>setEditing({...editing,shippingCompany:e.target.value==='self'?'':e.target.value.slice('company:'.length)||undefined})}>
+       <option value="" disabled>اختار طريقة التوصيل</option>
+       {registeredCompanies.map(name=><option key={name} value={'company:'+name}>{name}</option>)}
+       {editing.shippingCompany&&!registeredCompanies.includes(editing.shippingCompany)&&<option value={'company:'+editing.shippingCompany}>{editing.shippingCompany}</option>}
+       <option value="self">توصيل بنفسي</option>
       </select>
      </label>
      {numOrder('shipping','تكلفة الشحن')}
@@ -430,7 +443,7 @@ export default function Page(){
  function selectOrder(key:'governorate'|'source'|'status'|'paymentMethod',label:string,options:readonly string[],labels?:Record<string,string>){return <label key={key}>{label}<select className="field" value={editing?.[key]??''} onChange={e=>setEditing(x=>x?{...x,[key]:e.target.value}:x)}>{options.map(v=><option value={v} key={v}>{labels?.[v]||v||'اختر'}</option>)}</select></label>}
  function table(rows:Order[],selectable=false){
  const allChecked=rows.length>0&&rows.every(o=>selected.includes(o.id));
- return <div className="tracking-table-scroll" tabIndex={0} role="region" aria-label="جدول الأوردرات"><table className="table tracking-table"><thead><tr>{selectable&&<th><input type="checkbox" aria-label="تحديد كل الطلبات الظاهرة" disabled={!rows.length||busy} checked={allChecked} onChange={()=>setSelected(allChecked?[]:rows.map(o=>o.id))}/></th>}{columns.map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{rows.map(o=><tr key={o.id}>{selectable&&<td><input type="checkbox" aria-label={'تحديد طلب '+o.customerName} disabled={busy} checked={selected.includes(o.id)} onChange={e=>setSelected(e.target.checked?[...selected,o.id]:selected.filter(id=>id!==o.id))}/></td>}<td><strong className="order-ref" dir="ltr">#{o.id.slice(0,8).toUpperCase()}</strong></td><td>{o.customerName}{printBadge(printed.has('order:'+o.id))}</td><td><select className="tracking-select" aria-label={'شركة الشحن '+o.customerName} value={o.shippingCompany||''} disabled={busy} onChange={e=>void updateOrders([o],{shippingCompany:e.target.value})}><option value="">بدون شركة</option>{carrierNames.map(name=><option key={name}>{name}</option>)}</select></td>
+ return <div className="tracking-table-scroll" tabIndex={0} role="region" aria-label="جدول الأوردرات"><table className="table tracking-table"><thead><tr>{selectable&&<th><input type="checkbox" aria-label="تحديد كل الطلبات الظاهرة" disabled={!rows.length||busy} checked={allChecked} onChange={()=>setSelected(allChecked?[]:rows.map(o=>o.id))}/></th>}{columns.map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{rows.map(o=><tr key={o.id}>{selectable&&<td><input type="checkbox" aria-label={'تحديد طلب '+o.customerName} disabled={busy} checked={selected.includes(o.id)} onChange={e=>setSelected(e.target.checked?[...selected,o.id]:selected.filter(id=>id!==o.id))}/></td>}<td><strong className="order-ref" dir="ltr">#{o.id.slice(0,8).toUpperCase()}</strong></td><td>{o.customerName}{printBadge(printed.has('order:'+o.id))}</td><td><select className="tracking-select" aria-label={'شركة الشحن '+o.customerName} value={o.shippingCompany||''} disabled={busy} onChange={e=>void updateOrders([o],{shippingCompany:e.target.value})}><option value="">توصيل بنفسي</option>{registeredCompanies.map(name=><option key={name}>{name}</option>)}{o.shippingCompany&&!registeredCompanies.includes(o.shippingCompany)&&<option>{o.shippingCompany}</option>}</select></td>
  <td><select className={'tracking-select tracking-'+o.status} aria-label={'حالة الشحن '+o.customerName} value={o.status} disabled={busy} onChange={e=>void updateOrders([o],e.target.value as Status)}>{statuses.map(status=><option key={status} value={status}>{statusLabels[status]}</option>)}</select>{o.status==='shipped'&&<small className="tracking-awaiting-update">في انتظار تحديث شركة الشحن</small>}</td>
  <td><select className={'tracking-select tracking-'+collectionState(o)} aria-label={'حالة التحصيل '+o.customerName} value={collectionState(o)} disabled={busy} onChange={e=>chooseCollection(o,e.target.value as CollectionState)}>{collectionStates.map(state=><option key={state} value={state} disabled={state==='partial'&&carrierAmounts(o).due<=0}>{collectionLabels[state]}</option>)}</select>{o.carrierReceived? <button className="tracking-edit-amount" disabled={busy} title="تعديل المبلغ المستلم" aria-label={'تعديل المبلغ المستلم '+o.customerName} onClick={()=>chooseCollection(o,collectionState(o)==='partial'?'partial':'paid')}><Pencil size={13}/></button>:null}</td>
  <td>{money(carrierAmounts(o).due)}</td><td>{money(carrierAmounts(o).received)}</td><td>{money(carrierAmounts(o).remaining)}</td><td dir="ltr" className="numeric-value">{englishDigits(o.phone)}</td><td className="tracking-order-detail">{[o.governorate,o.city,o.address].filter(Boolean).join('، ')||'—'}</td><td className="tracking-order-detail">{o.items.map(i=>i.name+' × '+number(i.quantity)).join('، ')}</td><td className="numeric-value">{dateEN(o.createdAt)}</td><td className="numeric-value">{formatEntryDate(o.enteredAt||o.createdAt)}</td><td className="order-actions"><div className="links"><a className="btn tiny secondary" title="طباعة فاتورة PDF" href={'/orders/'+o.id+'/invoice'} target="_blank" rel="noopener noreferrer"><FileText size={15}/></a><button className="btn tiny secondary" title="طباعة البوليصة" onClick={()=>preview([o])}><Printer size={15}/> طباعة</button><button className="btn tiny secondary" title="تعديل" onClick={()=>{setErr('');setEditing({...o})}}><Pencil size={15}/></button>{o.status!=='confirmed'&&<button className="btn tiny secondary" title="تأكيد الطلب" disabled={busy} onClick={()=>updateOrders([o],'confirmed')}><CheckCircle2 size={15}/></button>}{o.status!=='cancelled'&&<button className="btn tiny secondary" title="إلغاء الطلب" disabled={busy} onClick={()=>updateOrders([o],'cancelled')}><XCircle size={15}/></button>}<button className="btn tiny danger" title="حذف" disabled={busy} onClick={()=>updateOrders([o],'delete')}><Trash2 size={15}/></button></div></td></tr>)}</tbody></table>{rows.length===0&&<div className="empty">{!loaded?'جاري تحميل البيانات…':'مفيش أوردرات مطابقة حالياً. اضغط إضافة أوردر للبدء.'}</div>}</div>}

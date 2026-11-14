@@ -689,3 +689,8 @@ button.tracking-card:hover { border-color: currentColor; }
 .order-manual-total { display: grid; gap: 8px; font-weight: 700; }
 .order-manual-total .field { width: 100%; font-size: 16px; }
 .order-manual-total small { font-weight: 400; }
+
+.order-city-fields { display: grid; gap: 8px; min-width: 0; }
+.order-basics > label:has(select[name="governorate"]) { align-self: end; }
+.registered-carriers { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; }
+.registered-carriers li { background: var(--soft); border-radius: 8px; padding: 8px 12px; }
