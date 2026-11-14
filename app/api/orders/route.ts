@@ -3,7 +3,7 @@ import {requireAccess} from '@/lib/access';
 import {getOrders,saveOrder,removeOrder,audit} from '@/lib/database';
 import {statuses,type Order} from '@/lib/types';
 export const runtime='nodejs';export const dynamic='force-dynamic';
-function replyError(e:unknown){const msg=e instanceof Error?e.message:'Unexpected error';return NextResponse.json({error:msg==='CONFLICT'?'الطلب اتعدل من مكان تاني. حدّث البيانات وحاول تاني':msg==='NOT_FOUND'?'الطلب غير موجود':msg.includes('not configured')?'Neon مش مربوط':'حصل خطأ في الاتصال بقاعدة البيانات'},{status:msg==='CONFLICT'?409:msg==='NOT_FOUND'?404:503})}
+function replyError(e:unknown){const msg=e instanceof Error?e.message:'Unexpected error';if(msg==='INVALID_ORDER_LOCATION')return NextResponse.json({error:'اختار المدينة أو المنطقة التابعة للمحافظة.'},{status:400});return NextResponse.json({error:msg==='CONFLICT'?'الطلب اتعدل من مكان تاني. حدّث البيانات وحاول تاني':msg==='NOT_FOUND'?'الطلب غير موجود':msg.includes('not configured')?'Neon مش مربوط':'حصل خطأ في الاتصال بقاعدة البيانات'},{status:msg==='CONFLICT'?409:msg==='NOT_FOUND'?404:503})}
 function normalizePhone(value:unknown){
  if(typeof value!=='string')return '';
  return value.normalize('NFKC')
@@ -20,6 +20,8 @@ function validationError(o:Order){
   if(!Number.isFinite(item.quantity)||item.quantity<=0)return `راجع عدد القطع للمنتج رقم ${index+1}.`;
   if(!Number.isFinite(item.price)||item.price<0)return `راجع سعر المنتج رقم ${index+1}.`;
  }
+ if(typeof o.governorate!=='string'||typeof o.city!=='string')return 'راجع المحافظة والمدينة.';
+ if(o.courier!==undefined&&(typeof o.courier!=='string'||o.courier.length>120))return 'راجع اسم المندوب.';
  if(!statuses.includes(o.status))return 'اختار حالة صحيحة للطلب.';
  if([o.shipping,o.discount,o.prepaid].some(value=>!Number.isFinite(value)||value<0))return 'راجع مبالغ الشحن والخصم والمدفوع مقدمًا.';
  if(o.shippingCompany!==undefined&&(typeof o.shippingCompany!=='string'||o.shippingCompany.length>120))return 'راجع اسم شركة الشحن.';

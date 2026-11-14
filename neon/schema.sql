@@ -66,3 +66,15 @@ CREATE TABLE IF NOT EXISTS public.shipping_companies (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS shipping_companies_name_idx ON public.shipping_companies (lower(name));
 COMMIT;
+
+CREATE TABLE IF NOT EXISTS public.address_governorates (
+ name text PRIMARY KEY
+);
+
+CREATE TABLE IF NOT EXISTS public.address_localities (
+ governorate text NOT NULL REFERENCES public.address_governorates(name),
+ name text NOT NULL,
+ PRIMARY KEY (governorate, name)
+);
+
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS courier text NOT NULL DEFAULT '';

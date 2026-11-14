@@ -661,3 +661,29 @@ button.tracking-card:hover { border-color: currentColor; }
 }
 .tracking-awaiting-update { display: block; margin-top: .3rem; color: #174b86; }
 .tracking-table td.tracking-order-detail { min-width: 160px; max-width: 240px; white-space: normal; overflow-wrap: anywhere; }
+
+.order-editor { width: min(680px, 100%); }
+.order-editor .order-basics, .order-editor .order-more .formgrid {
+ grid-template-columns: repeat(2, minmax(0, 1fr));
+ gap: 12px;
+}
+.order-editor .order-product-row {
+ grid-template-columns: minmax(0, 1fr) minmax(64px, 92px) auto;
+ align-items: start;
+ gap: 8px;
+ margin-bottom: 10px;
+}
+.order-product-row > button { margin-top: 23px; }
+.order-product-picker { position: relative; min-width: 0; }
+.order-product-picker > .btn { margin-block: 5px; }
+.order-product-picker .product-results { max-height: 240px; }
+.order-product-thumbnail { display: inline-flex; width: auto; margin: 0 8px; vertical-align: middle; }
+.order-product-thumbnail img { width: 26px; height: 26px; }
+.order-more { margin-top: 16px; border-block: 1px solid var(--border); }
+.order-more summary { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; cursor: pointer; font-weight: 700; }
+.order-more summary::-webkit-details-marker { display: none; }
+.order-more[open] summary svg { transform: rotate(180deg); }
+.order-more[open] { padding-bottom: 12px; }
+.order-item-details { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.order-editor .order-total-compact { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.order-editor .order-total-compact .editor-grand { grid-column: auto; }

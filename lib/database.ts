@@ -32,8 +32,29 @@ export async function getOrders():Promise<Order[]>{
   ORDER BY entered_at DESC, o.id DESC`;
  return rows.map(order);
 }
+export async function getOrderLocations():Promise<Record<string,string[]>>{
+ const rows=await sql()`SELECT g.name AS governorate, l.name AS city
+  FROM public.address_governorates g
+  LEFT JOIN public.address_localities l ON l.governorate=g.name`;
+ const locations:Record<string,string[]>=Object.create(null);
+ for(const row of rows){
+  const cities=locations[String(row.governorate)]??=[];
+  if(row.city!==null)cities.push(String(row.city));
+ }
+ for(const cities of Object.values(locations))cities.sort((a,b)=>a.localeCompare(b,'ar'));
+ return locations;
+}
+
 export async function saveOrder(input:Order):Promise<Order>{
  const db=sql(),date=orderDate(input.createdAt);
+ const governorate=input.governorate||'',city=input.city||'';
+ if(governorate||city){
+  const locations=await db`SELECT 1 FROM public.address_localities WHERE governorate=${governorate} AND name=${city}
+   UNION ALL
+   SELECT 1 FROM public.orders WHERE id=${input.id||null}::uuid
+    AND governorate=${governorate} AND city=${city} AND deleted_at IS NULL`;
+  if(!locations.length)throw new Error('INVALID_ORDER_LOCATION');
+ }
  if(input.id){
   const rows=await db`UPDATE public.orders SET
    brand=${input.brand},created_at=${date}::timestamptz,updated_at=now(),
@@ -43,18 +64,18 @@ export async function saveOrder(input:Order):Promise<Order>{
    prepaid=${input.prepaid},shipping=${input.shipping},discount=${input.discount},
    items=${JSON.stringify(input.items)}::jsonb,status=${input.status},
    shipping_company=COALESCE(${input.shippingCompany??null},shipping_company),carrier_received=COALESCE(${input.carrierReceived??null},carrier_received),
-   notes=${input.notes||''},assigned_to=${input.assignedTo||''},version=version+1
+   notes=${input.notes||''},assigned_to=${input.assignedTo||''},courier=COALESCE(${input.courier??null},courier),version=version+1
    WHERE id=${input.id}::uuid AND version=${input.version} AND deleted_at IS NULL RETURNING *`;
   if(!rows.length)throw new Error('CONFLICT');
   return order(rows[0]);
  }
  const rows=await db`INSERT INTO public.orders
   (brand,created_at,customer_name,phone,alternate_phone,governorate,city,address,source,payment_method,
-   prepaid,shipping,discount,items,status,shipping_company,carrier_received,notes,assigned_to)
+   prepaid,shipping,discount,items,status,shipping_company,carrier_received,notes,assigned_to,courier)
   VALUES (${input.brand},${date}::timestamptz,${input.customerName.trim()},${input.phone},${input.alternatePhone||''},
   ${input.governorate||''},${input.city||''},${input.address||''},${input.source||''},${input.paymentMethod||''},
   ${input.prepaid},${input.shipping},${input.discount},${JSON.stringify(input.items)}::jsonb,${input.status},${input.shippingCompany??''},${input.carrierReceived??0},
-  ${input.notes||''},${input.assignedTo||''}) RETURNING *`;
+  ${input.notes||''},${input.assignedTo||''},${input.courier??''}) RETURNING *`;
  return order(rows[0]);
 }
 export async function removeOrder(id:string,version:number):Promise<Order>{
