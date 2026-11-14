@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
   shipping numeric(14,2) NOT NULL DEFAULT 0 CHECK (shipping>=0),
   discount numeric(14,2) NOT NULL DEFAULT 0 CHECK (discount>=0),
   manual_total numeric(14,2) CHECK (manual_total>=0),
+  manual_collection numeric(14,2) CHECK (manual_collection>=0),
   items jsonb NOT NULL DEFAULT '[]'::jsonb,
   status text NOT NULL DEFAULT 'new' CHECK(status IN ('new','contacted','confirmed','preparing','shipped','delivered','cancelled','returned','postponed','refused')),
   shipping_company text NOT NULL DEFAULT '' CHECK (length(shipping_company)<=120),

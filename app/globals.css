@@ -694,3 +694,13 @@ button.tracking-card:hover { border-color: currentColor; }
 .order-basics > label:has(select[name="governorate"]) { align-self: end; }
 .registered-carriers { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; }
 .registered-carriers li { background: var(--soft); border-radius: 8px; padding: 8px 12px; }
+
+.order-city-fields { position: relative; color: #516154; font-size: 12px; font-weight: 690; }
+.city-trigger { display: flex; justify-content: space-between; align-items: center; gap: 6px; text-align: start; }
+.city-trigger svg { flex: none; }
+.city-validation { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.city-popup { position: absolute; z-index: 10; inset-inline: 0; top: calc(100% + 4px); padding: 8px; background: var(--surface, white); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px #0002; }
+.city-results { max-height: 190px; overflow: auto; display: grid; gap: 2px; margin-top: 6px; }
+.city-results button { text-align: start; background: transparent; border: 0; border-radius: 6px; padding: 9px; color: inherit; }
+.city-results button:is(:hover,:focus-visible,[aria-pressed="true"]) { background: var(--soft); }
+.order-manual-total + .order-manual-total { padding-top: 10px; border-top: 1px solid var(--border); }
