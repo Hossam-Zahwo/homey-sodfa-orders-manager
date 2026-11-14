@@ -7,7 +7,7 @@ export const statuses:Status[]=['new','contacted','confirmed','preparing','shipp
 export const statusLabels:Record<Status,string>={new:'جديد',contacted:'تم التواصل',confirmed:'مؤكد',preparing:'قيد التجهيز',shipped:'تم التسليم لشركة الشحن',delivered:'تم التسليم للعميل',cancelled:'تم الإلغاء',returned:'مرتجع من شركة الشحن',postponed:'مؤجل',refused:'رفض الاستلام'};
 export const govs=['القاهرة','الجيزة','الإسكندرية','القليوبية','البحيرة','مطروح','الدقهلية','الغربية','المنوفية','كفر الشيخ','دمياط','بورسعيد','الإسماعيلية','السويس','الشرقية','الفيوم','بني سويف','المنيا','أسيوط','سوهاج','قنا','الأقصر','أسوان','البحر الأحمر','الوادي الجديد','شمال سيناء','جنوب سيناء'];
 export const calculatedTotal=(o:Order)=>o.items.reduce((s,i)=>s+i.price*i.quantity,0)+o.shipping-o.discount;
-export const totalOf=(o:Order)=>o.manualTotal??calculatedTotal(o);
+export const totalOf=(o:Order)=>o.manualTotal??(o.manualCollection!=null?o.manualCollection+o.prepaid:calculatedTotal(o));
 
 export type Waybill={
  id:string;brand:Brand;customerId:string|null;orderId:string|null;createdAt:string;updatedAt:string;
