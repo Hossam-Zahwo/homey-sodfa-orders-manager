@@ -3,64 +3,21 @@ import {requireAccess} from '@/lib/access';
 import {talaShipmentDateRange,type TalaOption,type TalaTracking} from '@/lib/tala-connection';
 import {authenticate,getStaff} from '@/lib/staff-auth';
 import {allowedTalaEndpoint,readTalaSettings,writeTalaSettings,type TalaSettings} from '@/lib/tala-settings-store';
+import {graphql,login,TalaError,invalidateTalaToken} from '@/lib/tala-api';
 import type {Brand} from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 const queries = {
- login: 'mutation Login($input: LoginInput!) { login(input: $input) { token } }',
  services: 'query Services { listShippingServicesDropdown(input: { active: true }) { id name } }',
  zones: 'query Zones($id: Int!) { listZonesDropdown(input: { active: true, service: { serviceId: $id } }) { id name } }',
  subzones: 'query Subzones($id: Int!) { listZonesDropdown(input: { active: true, parentId: $id }) { id name } }',
  shipments: 'query Shipments($input: ListShipmentsFilterInput, $page: Int) { listShipments(input: $input, first: 100, page: $page) { paginatorInfo { hasMorePages } data { code refNumber status { code name } } } }',
  tracking: 'query Track($code: String) { shipment(code: $code) { code refNumber status { code name } } }',
 };
-const tokens = new Map<string,{token:string; expiresAt:number}>();
-const logins = new Map<string,Promise<string>>();
-
 function publicSettings(settings:TalaSettings){
  return {configured:Boolean(settings.input),username:settings.input?.username??'',endpoint:settings.endpoint,
   documentation:settings.documentation,support:settings.support,revision:settings.revision};
-}
-
-class TalaError extends Error {
- constructor(readonly code: 'unreachable'|'unauthenticated'|'rejected') { super(code); }
-}
-
-async function graphql<T>(endpoint:string,query: string, variables: object, language: 'ar'|'en', token?: string): Promise<T> {
- let response: Response;
- try {
-  response = await fetch(endpoint, {
-   method: 'POST', cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(8000),
-   headers: {'Content-Type':'application/json','Content-Language':language,...(token?{Authorization:'Bearer '+token}:{})},
-   body: JSON.stringify({query,variables}),
-  });
- } catch { throw new TalaError('unreachable'); }
- if (response.status === 401) throw new TalaError('unauthenticated');
- if (!response.ok) throw new TalaError('unreachable');
- const result = await response.json().catch(() => null);
- if (result?.errors?.some((error: {message?: string; extensions?: {code?:string}}) =>
-  error.extensions?.code === 'UNAUTHENTICATED' || /^Unauthenticated\.?$/i.test(error.message ?? ''))) {
-  throw new TalaError('unauthenticated');
- }
- if (result?.errors?.length || !result?.data) throw new TalaError('rejected');
- return result.data;
-}
-
-async function login(cacheKey:string,endpoint:string,input: {username:string;password:string}) {
- const cached=tokens.get(cacheKey);
- if (cached && cached.expiresAt > Date.now()) return cached.token;
- for(const [id,entry] of tokens)if(entry.expiresAt<=Date.now())tokens.delete(id);
- let pending=logins.get(cacheKey);
- if (!pending) {
-  pending=graphql<{login:{token:string}}>(endpoint,queries.login,{input},'en').then(({login})=>{
-   if (!login?.token) throw new TalaError('rejected');
-   tokens.set(cacheKey,{token:login.token,expiresAt:Date.now()+60*60*1000});
-   return login.token;
-  }).finally(()=>logins.delete(cacheKey));
-  logins.set(cacheKey,pending);
- }
- return pending;
 }
 
 export async function GET(request: Request) {
@@ -158,7 +115,7 @@ export async function POST(request: Request) {
   try { data=await graphql<Data>(endpoint,queries[operation],variables,language,token); }
   catch (error) {
    if (!(error instanceof TalaError) || error.code!=='unauthenticated') throw error;
-   if (tokens.get(cacheKey)?.token===token) tokens.delete(cacheKey);
+   invalidateTalaToken(cacheKey,token);
    token=await login(cacheKey,endpoint,input);
    data=await graphql<Data>(endpoint,queries[operation],variables,language,token);
   }

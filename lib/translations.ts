@@ -1,4 +1,11 @@
 export const english: Readonly<Record<string, string>> = {
+  "رقم التتبع": "Tracking number",
+  "راجع حالة الإرسال في تالا": "Check dispatch status in Tala",
+  "تم إرسال الشحنة لتالا. رقم التتبع": "Shipment sent to Tala. Tracking number",
+  "اختار خدمة تالا والمنطقة والمنطقة الفرعية.": "Select the Tala service, zone, and subzone.",
+  "تعذّر تجهيز الإرسال لتالا. راجع الاتصال والخدمة والمنطقة.": "Could not prepare dispatch to Tala. Check the connection and destination.",
+  "اتحفظ الأوردر. راجع مرجعه في تالا قبل ما تبعته مرة تانية.": "Order saved. Check its reference in Tala before resending.",
+  "اتحفظ الأوردر، والإرسال لتالا غير متاح دلوقتي.": "Order saved. Dispatch to Tala is currently unavailable.",
   "العميل والعنوان": "Customer and address",
   "بيانات التوصيل": "Delivery details",
   "الشحن والتحصيل": "Shipping and collection",

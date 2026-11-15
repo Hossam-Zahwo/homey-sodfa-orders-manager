@@ -90,3 +90,10 @@ CREATE TABLE IF NOT EXISTS public.tala_connection_settings (
  updated_by uuid NOT NULL REFERENCES public.staff_users(id),
  updated_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS public.tala_order_shipments (
+ order_id uuid PRIMARY KEY REFERENCES public.orders(id),
+ state text NOT NULL CHECK (state IN ('sending','sent','review')),
+ tracking_code text,
+ external_id bigint,
+ updated_at timestamptz NOT NULL DEFAULT now()
+);

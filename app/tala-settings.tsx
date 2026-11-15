@@ -203,7 +203,7 @@ export function TalaSettings({brand,orderIds,openOrder}: {brand: Brand;orderIds:
    {tracking&&<p role="status"><b dir="ltr">{tracking.code}</b> · {tracking.status?.name??'—'} {tracking.refNumber&&<>· <bdi>{tracking.refNumber}</bdi></>}</p>}
   </>}
   {settings?.configured&&!draft&&<TalaShipments key={brand+':'+settings.revision} brand={brand} revision={settings.revision} orderIds={orderIds} openOrder={openOrder}/>}
-  <p className="muted">{label('اختبار الاتصال والاستعلام لا ينشئان شحنات. إرسال الطلبات وتعديل حالات الأوردرات في هومي يحتاج تفعيل منفصل.',
-   'Connection tests and lookups do not create shipments. Dispatch and updates to Homey order records require separate activation.')}</p>
+  <p className="muted">{label('اختبار الاتصال والاستعلام لا ينشئان شحنات. الاستعلام ما بيغيّرش حالات الأوردرات المحفوظة في هومي.',
+   'Connection tests and lookups do not create shipments. Lookups do not change saved Homey order statuses.')}</p>
  </section>;
 }

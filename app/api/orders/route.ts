@@ -2,6 +2,10 @@ import {NextResponse} from 'next/server';
 import {requireAccess} from '@/lib/access';
 import {getOrders,saveOrder,removeOrder,audit} from '@/lib/database';
 import {statuses,type Order} from '@/lib/types';
+import {talaExpress} from '@/lib/tala-shipping';
+import {dispatchTalaOrder,parseTalaDestination,prepareTalaDispatch} from '@/lib/tala-dispatch';
+import {closedWithoutDelivery} from '@/lib/carrier-tracking';
+export const maxDuration=45;
 export const runtime='nodejs';export const dynamic='force-dynamic';
 function replyError(e:unknown){const msg=e instanceof Error?e.message:'Unexpected error';if(msg==='INVALID_ORDER_LOCATION')return NextResponse.json({error:'اختار المدينة أو المنطقة التابعة للمحافظة.'},{status:400});return NextResponse.json({error:msg==='CONFLICT'?'الطلب اتعدل من مكان تاني. حدّث البيانات وحاول تاني':msg==='NOT_FOUND'?'الطلب غير موجود':msg.includes('not configured')?'Neon مش مربوط':'حصل خطأ في الاتصال بقاعدة البيانات'},{status:msg==='CONFLICT'?409:msg==='NOT_FOUND'?404:503})}
 function normalizePhone(value:unknown){
@@ -31,5 +35,25 @@ function validationError(o:Order){
  return '';
 }
 export async function GET(r:Request){const blocked=await requireAccess(r);if(blocked)return blocked;try{return NextResponse.json({data:await getOrders()})}catch(e){return replyError(e)}}
-export async function POST(r:Request){const blocked=await requireAccess(r);if(blocked)return blocked;try{const o=await r.json() as Order;const error=validationError(o);if(error)return NextResponse.json({error},{status:400});const saved=await saveOrder({...o,customerName:o.customerName.trim(),phone:normalizePhone(o.phone)});await audit(o.id?'update':'create','order',saved.id,saved.brand,JSON.stringify({status:saved.status,shippingCompany:saved.shippingCompany,carrierReceived:saved.carrierReceived})).catch(console.error);return NextResponse.json({data:saved})}catch(e){return replyError(e)}}
+export async function POST(r:Request){
+ const blocked=await requireAccess(r);
+ if(blocked)return blocked;
+ try{
+  const o=await r.json() as Order & {talaDestination?:unknown};
+  const error=validationError(o);
+  if(error)return NextResponse.json({error},{status:400});
+  const creationRequestId=!o.id&&typeof o.creationRequestId==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(o.creationRequestId)?o.creationRequestId:undefined;
+  let dispatch;
+  if(!o.id&&o.brand==='homey'&&o.shippingCompany===talaExpress&&!closedWithoutDelivery(o)&&o.status!=='delivered'){
+   const destination=parseTalaDestination(o.talaDestination);
+   if(!destination||typeof o.address!=='string'||!o.address.trim())return NextResponse.json({error:'اختار خدمة تالا والمنطقة والمنطقة الفرعية.'},{status:400});
+   try{dispatch=await prepareTalaDispatch(destination)}
+   catch{return NextResponse.json({error:'تعذّر تجهيز الإرسال لتالا. راجع الاتصال والخدمة والمنطقة.'},{status:503})}
+  }
+  const saved=await saveOrder({...o,customerName:o.customerName.trim(),phone:normalizePhone(o.phone)},creationRequestId);
+  await audit(o.id?'update':'create','order',saved.id,saved.brand,JSON.stringify({status:saved.status,shippingCompany:saved.shippingCompany,carrierReceived:saved.carrierReceived})).catch(console.error);
+  const tala=dispatch&&saved.shippingCompany===talaExpress&&!closedWithoutDelivery(saved)&&saved.status!=='delivered'?await dispatchTalaOrder(saved,dispatch):undefined;
+  return NextResponse.json({data:saved,tala});
+ }catch(e){return replyError(e)}
+}
 export async function DELETE(r:Request){const blocked=await requireAccess(r);if(blocked)return blocked;try{const {id,version}=await r.json();if(typeof id!=='string'||!Number.isInteger(version))return NextResponse.json({error:'Invalid request'},{status:400});const o=await removeOrder(id,version);await audit('delete','order',id,o.brand,'soft deleted').catch(console.error);return NextResponse.json({ok:true})}catch(e){return replyError(e)}}

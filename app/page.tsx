@@ -4,6 +4,7 @@ import {useTranslation,LanguageSwitch} from '@/app/language';
 import {customerPrintKey,printKeys,printDocuments} from '@/lib/print-history';
 import {talaExpress,talaRate} from '@/lib/tala-shipping';
 import {OrderDetails} from './order-details';
+import {TalaDestinationFields} from './tala-destination-fields';
 import {TalaSettings} from './tala-settings';
 import {ShippingIntegrations} from './shipping-integrations';
 import {canPrepareShipment} from '@/lib/shipping-handoff';
@@ -20,7 +21,7 @@ import {HomeyLogo} from '@/components/homey-logo';
 import {carrierAmounts,closedWithoutDelivery,collectionFromCustomer,productRevenue,collectionLabels,collectionState,collectionStates,shippingStates,type CollectionState} from '@/lib/carrier-tracking';
 
 type Tab='dashboard'|'orders'|'carriers'|'shipping-integrations'|'customers'|'reports'|'settings';
-const newOrder=(brand:Brand):Order=>({id:'',brand,createdAt:new Date().toLocaleDateString('en-CA'),updatedAt:'',version:0,customerName:'',phone:'',alternatePhone:'',governorate:'',city:'',address:'',source:'',paymentMethod:'الدفع عند الاستلام',prepaid:0,shipping:0,discount:0,items:[{name:'',sku:'',quantity:1,price:0}],status:'new',notes:'',assignedTo:'',deletedAt:''});
+const newOrder=(brand:Brand):Order=>({id:'',creationRequestId:crypto.randomUUID(),brand,createdAt:new Date().toLocaleDateString('en-CA'),updatedAt:'',version:0,customerName:'',phone:'',alternatePhone:'',governorate:'',city:'',address:'',source:'',paymentMethod:'الدفع عند الاستلام',prepaid:0,shipping:0,discount:0,items:[{name:'',sku:'',quantity:1,price:0}],status:'new',notes:'',assignedTo:'',deletedAt:''});
 const newCustomer=(brand:Brand):Customer=>({id:'',brand,name:'',phone:'',alternatePhone:'',governorate:'',city:'',address:'',notes:'',createdAt:'',updatedAt:'',deletedAt:''});
 const englishDigits=(value:string|number)=>String(value??'').replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-0x660)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-0x6f0));
 const number=(n:number)=>new Intl.NumberFormat('en-US',{maximumFractionDigits:2,numberingSystem:'latn'}).format(n);
@@ -301,11 +302,16 @@ export default function Page(){
   if(!Object.keys(patch).length){setErr('ادخل قيمة في خانة واحدة على الأقل');return}
   void updateOrders(bulkEditing,patch).then(done=>{if(done)setBulkLocation({governorate:'',city:''})});
  }
- async function saveOrder(e:React.FormEvent){e.preventDefault();if(!editing)return;
+ async function saveOrder(e:React.FormEvent<HTMLFormElement>){e.preventDefault();if(!editing||busy)return;
+  const fields=new FormData(e.currentTarget);
   if(editing.shippingCompany===talaExpress&&talaRate(talaExpress,editing.governorate,editing.city)===undefined&&editing.shipping<=0){
    setErr('اكتب تكلفة شحن تالا للمنطقة دي قبل الحفظ.');return;
   }
-  setBusy(true);setErr('');try{await api('orders','POST',editing);setEditing(null);setNotice('تم حفظ الطلب');await reload()}catch(e){setErr((e as Error).message)}finally{setBusy(false)}}
+  setBusy(true);setErr('');try{const {tala}=await api('orders','POST',{...editing,talaDestination:{
+   serviceId:Number(fields.get('talaService')),zoneId:Number(fields.get('talaZone')),subzoneId:Number(fields.get('talaSubzone')),
+  }});setEditing(null);setNotice(tala?.state==='sent'?t('تم إرسال الشحنة لتالا. رقم التتبع')+' '+tala.trackingCode
+   :tala?.state==='review'?'اتحفظ الأوردر. راجع مرجعه في تالا قبل ما تبعته مرة تانية.'
+   :tala?.state==='unavailable'?'اتحفظ الأوردر، والإرسال لتالا غير متاح دلوقتي.':'تم حفظ الطلب');await reload()}catch(e){setErr((e as Error).message)}finally{setBusy(false)}}
  async function saveCustomer(e:React.FormEvent){e.preventDefault();if(!editCustomer)return;setBusy(true);setErr('');try{await api('customers','POST',editCustomer);setEditCustomer(null);setNotice('تم حفظ العميل');await reload()}catch(e){setErr((e as Error).message)}finally{setBusy(false)}}
  async function deleteCustomer(c:Customer){if(!confirm(t('حذف العميل من القائمة؟')))return;setBusy(true);try{await api('customers','DELETE',{id:c.id,brand:c.brand});await reload()}catch(e){setErr((e as Error).message)}finally{setBusy(false)}}
  if(auth===null)return <div className="login" style={theme}><section className="panel login-card"><div className="logo-circle"><ShieldCheck size={25}/></div><h2>{t("تأمين لوحة الإدارة")}</h2><p className="muted">{t("جاري التحقق من صلاحية الدخول…")}</p></section></div>;
@@ -439,6 +445,9 @@ export default function Page(){
       </select>
      </label>
      {numOrder('shipping',t("تكلفة الشحن"))}
+     {!editing.id&&editing.brand==='homey'&&editing.shippingCompany===talaExpress&&!closedWithoutDelivery(editing)&&editing.status!=='delivered'&&
+      <TalaDestinationFields key={editing.governorate+':'+editing.city}/>}
+
      {editing.shippingCompany===talaExpress&&editing.city&&talaRate(talaExpress,editing.governorate,editing.city)===undefined&&
       <small className="full muted">{t("سعر تالا للمنطقة دي محتاج تأكيد. اكتب تكلفة الشحن يدويًا.")}</small>}
     </div>

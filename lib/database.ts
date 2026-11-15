@@ -6,7 +6,7 @@ function sql(){
  if(!url)throw new Error('Neon database is not configured');
  return neon(url);
 }
-const orderFields:Record<string,string>={manualCollection:'manual_collection',manualTotal:'manual_total',carrierReceived:'carrier_received',shippingCompany:'shipping_company',enteredAt:'entered_at',createdAt:'created_at',updatedAt:'updated_at',customerName:'customer_name',alternatePhone:'alternate_phone',paymentMethod:'payment_method',assignedTo:'assigned_to',deletedAt:'deleted_at'};
+const orderFields:Record<string,string>={talaTrackingCode:'tala_tracking_code',talaDispatchState:'tala_dispatch_state',manualCollection:'manual_collection',manualTotal:'manual_total',carrierReceived:'carrier_received',shippingCompany:'shipping_company',enteredAt:'entered_at',createdAt:'created_at',updatedAt:'updated_at',customerName:'customer_name',alternatePhone:'alternate_phone',paymentMethod:'payment_method',assignedTo:'assigned_to',deletedAt:'deleted_at'};
 const customerFields:Record<string,string>={alternatePhone:'alternate_phone',createdAt:'created_at',updatedAt:'updated_at',deletedAt:'deleted_at'};
 function fromDb<T>(row:Record<string,unknown>,fields:Record<string,string>):T{
  const reverse=Object.fromEntries(Object.entries(fields).map(([a,b])=>[b,a]));
@@ -31,7 +31,16 @@ export async function getOrders():Promise<Order[]>{
   ) a ON a.entity_id = o.id::text
   WHERE o.deleted_at IS NULL
   ORDER BY entered_at DESC, o.id DESC`;
- return rows.map(order);
+ if(!rows.length)return [];
+ const shipments=await sql()`SELECT order_id,state,tracking_code FROM public.tala_order_shipments`.catch(error=>{
+  if(error?.code==='42P01')return [];
+  throw error;
+ });
+ const byOrder=new Map(shipments.map(row=>[row.order_id,row]));
+ return rows.map(row=>{
+  const shipment=byOrder.get(row.id);
+  return order(shipment?{...row,tala_tracking_code:shipment.tracking_code,tala_dispatch_state:shipment.state}:row);
+ });
 }
 export async function getOrderLocations():Promise<Record<string,string[]>>{
  const rows=await sql()`SELECT g.name AS governorate, l.name AS city
@@ -46,7 +55,7 @@ export async function getOrderLocations():Promise<Record<string,string[]>>{
  return locations;
 }
 
-export async function saveOrder(input:Order):Promise<Order>{
+export async function saveOrder(input:Order,creationRequestId?:string):Promise<Order>{
  const db=sql(),date=orderDate(input.createdAt);
  const governorate=input.governorate||'',city=input.city||'';
  if(governorate||city){
@@ -73,13 +82,16 @@ export async function saveOrder(input:Order):Promise<Order>{
   return order(rows[0]);
  }
  const rows=await db`INSERT INTO public.orders
-  (brand,created_at,customer_name,phone,alternate_phone,governorate,city,address,source,payment_method,
+  (id,brand,created_at,customer_name,phone,alternate_phone,governorate,city,address,source,payment_method,
    prepaid,shipping,discount,items,status,shipping_company,carrier_received,notes,assigned_to,courier,manual_total,manual_collection)
-  VALUES (${input.brand},${date}::timestamptz,${input.customerName.trim()},${input.phone},${input.alternatePhone||''},
+  VALUES (COALESCE(${creationRequestId??null}::uuid,gen_random_uuid()),${input.brand},${date}::timestamptz,${input.customerName.trim()},${input.phone},${input.alternatePhone||''},
   ${input.governorate||''},${input.city||''},${input.address||''},${input.source||''},${input.paymentMethod||''},
   ${input.prepaid},${input.shipping},${input.discount},${JSON.stringify(input.items)}::jsonb,${input.status},${input.shippingCompany??''},${input.carrierReceived??0},
-  ${input.notes||''},${input.assignedTo||''},${input.courier??''},${input.manualTotal??null},${input.manualCollection??null}) RETURNING *`;
- return order(rows[0]);
+  ${input.notes||''},${input.assignedTo||''},${input.courier??''},${input.manualTotal??null},${input.manualCollection??null}) ON CONFLICT(id) DO NOTHING RETURNING *`;
+ if(rows.length)return order(rows[0]);
+ const [existing]=await db`SELECT * FROM public.orders WHERE id=${creationRequestId??null}::uuid AND brand=${input.brand} AND deleted_at IS NULL`;
+ if(!existing)throw new Error('CONFLICT');
+ return order(existing);
 }
 export async function removeOrder(id:string,version:number):Promise<Order>{
  const rows=await sql()`UPDATE public.orders SET deleted_at=now(),updated_at=now(),version=version+1

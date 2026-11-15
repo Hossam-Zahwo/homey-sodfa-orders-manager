@@ -77,3 +77,9 @@ This connection test uses GraphQL login and reads only. The dashboard does not s
 Apply `neon/migrations/20261115_tala_settings.sql` before enabling dashboard writes in production. The editor opens locked and confirms each save or removal against the active staff account using its email and password. Saving closes the editor. The database stores encrypted carrier credentials and the staff account that last updated the settings.
 
 Server environment credentials remain the initial fallback. A saved configuration, including one with its credentials explicitly removed, takes precedence. Configure a stable `TALA_SETTINGS_ENCRYPTION_SECRET` before first use if session keys are rotated independently. Changing the encryption secret requires re-encrypting the existing settings. Additional Tala endpoints must be approved via `TALA_ALLOWED_ENDPOINTS` before staff can select them, and changing endpoints requires re-entering Tala's password.
+
+### Creating Tala shipments from Homey orders
+
+Apply `neon/migrations/20261115_tala_dispatch.sql` before releasing automatic dispatch. For a new Homey order assigned to Tala Express, the order form requires Tala's service, zone, and subzone. Saving sends that order using its UUID as Tala's external reference. Existing orders and edits do not trigger dispatch. Order details show the carrier tracking number when available.
+
+The application reserves one shipment attempt per saved order. If the upstream response is ambiguous, check the order reference in Tala before attempting a manual send. This integration does not retry an uncertain create or change the staff-managed order status.

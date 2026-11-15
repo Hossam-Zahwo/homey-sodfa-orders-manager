@@ -34,6 +34,8 @@ export function OrderDetails({order,close,edit,print,prepare}:Props){
     <dl>
      <dt>{t('رقم التليفون')}</dt><dd><a href={'tel:'+order.phone} dir="ltr">{order.phone}</a>{order.alternatePhone&&<> · <a href={'tel:'+order.alternatePhone} dir="ltr">{order.alternatePhone}</a></>}</dd>
      <dt>{t('العنوان')}</dt><dd>{[t(order.governorate),order.city,order.address].filter(Boolean).join(' · ')||'—'}</dd>
+     {order.talaTrackingCode&&<><dt>{t('رقم التتبع')}</dt><dd><bdi>{order.talaTrackingCode}</bdi></dd></>}
+     {order.talaDispatchState&&order.talaDispatchState!=='sent'&&<><dt>{t('ربط شركات الشحن')}</dt><dd>{t('راجع حالة الإرسال في تالا')}</dd></>}
      <dt>{t('شركة الشحن')}</dt><dd>{t(order.shippingCompany||'توصيل بنفسي')}</dd>
     </dl>
    </section>
