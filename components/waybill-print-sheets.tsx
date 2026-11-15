@@ -22,7 +22,9 @@ export function WaybillLabel({waybill:w,printDate}:{waybill:Waybill;printDate?:s
  const printedDate=printDate?formatPrintDate(printDate):'';
  return <article className="shipping-label">
    <header className={'shipping-label-header '+(w.brand==='homey'?'shipping-label-header-homey':'')}>{w.brand==='homey'?<HomeyLogo className="shipping-label-homey-logo"/>:<><strong>{t("صدفة")}</strong><span>SODFA</span></>}</header>
-   {printedDate&&<div className="shipping-label-print-date"><span>{t("تاريخ الإنشاء")}</span><strong dir="ltr">{printedDate}</strong></div>}
+   <div className="shipping-label-print-date" aria-hidden={!printedDate}>
+    {printedDate&&<><span>{t("تاريخ الإنشاء")}</span><strong dir="ltr">{printedDate}</strong></>}
+   </div>
    <div className="shipping-label-title">{t("بيانات المستلم")}</div>
    <div className="shipping-label-detail"><span>{t("اسم العميل")}</span><strong>{w.customerName}</strong></div>
    <div className="shipping-label-detail"><span>{t("رقم الهاتف")}</span><strong className="shipping-label-phone" dir="ltr">{latin(w.phone)}</strong></div>
@@ -31,8 +33,10 @@ export function WaybillLabel({waybill:w,printDate}:{waybill:Waybill;printDate?:s
     <div className="shipping-label-detail"><span>{t("المحافظة")}</span><strong>{w.governorate||'—'}</strong></div>
     <div className="shipping-label-detail"><span>{t("المدينة / المنطقة")}</span><strong>{w.city||'—'}</strong></div>
    </div>
-   <div className="shipping-label-detail shipping-label-address"><span>{t("العنوان بالتفصيل")}</span><strong>{w.address?.trim()||'—'}</strong></div>
-   {w.notes?.trim()&&<div className="shipping-label-note"><span>{t("ملاحظات")}</span><strong>{w.notes.trim()}</strong></div>}
+   <div className="shipping-label-text">
+    <div className="shipping-label-detail shipping-label-address"><span>{t("العنوان بالتفصيل")}</span><strong>{w.address?.trim()||'—'}</strong></div>
+    {w.notes?.trim()&&<div className="shipping-label-note"><span>{t("ملاحظات")}</span><strong>{w.notes.trim()}</strong></div>}
+   </div>
    <div className="shipping-label-total"><span>{t("المطلوب تحصيله")}</span><strong dir="ltr">{currency(w.collectionAmount)}</strong></div>
  </article>;
 }
