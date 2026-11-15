@@ -1,4 +1,5 @@
 'use client';
+import {useEffect,useRef,useState,type CSSProperties} from 'react';
 import {useTranslation} from '@/app/language';
 
 import type {Waybill} from '@/lib/types';
@@ -43,11 +44,28 @@ export function WaybillLabel({waybill:w,printDate}:{waybill:Waybill;printDate?:s
 
 export function WaybillPrintSheets({waybills,perPage,printDate,printDates}:{waybills:Waybill[];perPage:3|4;printDate?:string;printDates?:Record<string,string>}){
  const t=useTranslation();
+ const container=useRef<HTMLDivElement>(null);
+ const [previewScale,setPreviewScale]=useState(1);
+ useEffect(()=>{
+  const preview=container.current;
+  if(!preview)return;
+  function resize(){
+   const sheet=preview?.querySelector<HTMLElement>('.shipping-sheet');
+   if(sheet?.offsetWidth&&preview?.clientWidth){
+    setPreviewScale(Math.min(1,preview.clientWidth/sheet.offsetWidth));
+   }
+  }
+  resize();
+  const observer=new ResizeObserver(resize);
+  observer.observe(preview);
+  return ()=>observer.disconnect();
+ },[waybills.length]);
  const chunks:Waybill[][]=[];
  for(let i=0;i<waybills.length;i+=perPage)chunks.push(waybills.slice(i,i+perPage));
- return <div className={'shipping-sheets shipping-sheets-'+perPage}>
-  {chunks.map((group,idx)=><section className="shipping-sheet" key={idx} aria-label={t("صفحة ")+(idx+1)}>
+ return <div ref={container} className={'shipping-sheets shipping-sheets-'+perPage}
+  style={{'--waybill-preview-scale':previewScale} as CSSProperties}>
+  {chunks.map((group,idx)=><div className="shipping-sheet-frame" key={idx}><section className="shipping-sheet" aria-label={t("صفحة ")+(idx+1)}>
     {group.map(w=><WaybillLabel key={w.id} waybill={w} printDate={printDates?.[w.id]??printDate}/>)}
-  </section>)}
+  </section></div>)}
  </div>;
 }
