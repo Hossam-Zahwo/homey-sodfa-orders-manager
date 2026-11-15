@@ -2,13 +2,30 @@
 
 import {useEffect, useState} from 'react';
 import {useLanguage} from './language';
-import {talaCredentialNames, talaDocumentation, talaEndpoint, talaSupport, type TalaOperation, type TalaOption, type TalaTracking} from '@/lib/tala-connection';
+import {talaDocumentation, talaEndpoint, talaSupport, type TalaOperation, type TalaOption, type TalaTracking} from '@/lib/tala-connection';
 import type {Brand} from '@/lib/types';
+
+type ConnectionSettings = {
+ configured:boolean;
+ username:string;
+ endpoint:string;
+ documentation:string;
+ support:string;
+ revision:number;
+};
 
 export function TalaSettings({brand}: {brand: Brand}) {
  const {language}=useLanguage();
  const label=(ar:string,en:string)=>language==='en'?en:ar;
- const [configured,setConfigured]=useState<boolean|null>(null);
+ const [settings,setSettings]=useState<ConnectionSettings|null>(null);
+ const [draft,setDraft]=useState<ConnectionSettings|null>(null);
+ const [action,setAction]=useState<'save'|'remove'>('save');
+ const [email,setEmail]=useState('');
+ const [staffPassword,setStaffPassword]=useState('');
+ const [carrierPassword,setCarrierPassword]=useState('');
+ const [saveError,setSaveError]=useState('');
+ const [saved,setSaved]=useState(false);
+ const configured=settings?.configured??null;
  const [configError,setConfigError]=useState(false);
  const [connected,setConnected]=useState(false);
  const [busy,setBusy]=useState(false);
@@ -20,7 +37,6 @@ export function TalaSettings({brand}: {brand: Brand}) {
  const [zone,setZone]=useState('');
  const [code,setCode]=useState('');
  const [tracking,setTracking]=useState<TalaTracking|null>();
- const credentials=talaCredentialNames(brand);
  const api='/api/shipping-integrations/tala';
 
  useEffect(()=>{
@@ -28,7 +44,7 @@ export function TalaSettings({brand}: {brand: Brand}) {
   fetch(api+'?brand='+brand,{cache:'no-store',signal:controller.signal}).then(async response=>{
    if(!response.ok)throw new Error();
    const data=await response.json();
-   setConfigured(data.configured===true);
+   setSettings(data);
   }).catch(()=>{if(!controller.signal.aborted)setConfigError(true)});
   return ()=>controller.abort();
  },[brand]);
@@ -55,23 +71,102 @@ export function TalaSettings({brand}: {brand: Brand}) {
   } finally {setBusy(false)}
  }
 
+ function closeEditor(){
+  setDraft(null);setEmail('');setStaffPassword('');setCarrierPassword('');setSaveError('');
+ }
+
+ async function saveSettings(event:React.FormEvent){
+  event.preventDefault();
+  if(!draft||busy)return;
+  setBusy(true);setSaveError('');
+  try{
+   const result=await fetch(api,{
+    method:'PATCH',headers:{'Content-Type':'application/json'},cache:'no-store',
+    body:JSON.stringify({...draft,brand,action,email,password:staffPassword,carrierPassword}),
+   });
+   const data=await result.json();
+   if(!result.ok){
+    if(data.error==='stale_settings'){
+     const latest=await fetch(api+'?brand='+brand,{cache:'no-store'});
+     if(latest.ok)setSettings(await latest.json());
+    }
+    throw new Error(data.error);
+   }
+   setSettings(data);closeEditor();setSaved(true);setConnected(false);
+   setServices([]);setZones([]);setSubzones([]);setService('');setZone('');setTracking(undefined);setError('');
+  }catch(error){
+   setSaveError(error instanceof Error?error.message:'settings_unavailable');
+   setStaffPassword('');
+  }finally{setBusy(false)}
+ }
+
+ const saveMessages:Record<string,[string,string]>={
+  reauthentication_failed:['بيانات مدير الطلبات غير صحيحة. استخدم نفس الحساب اللي داخل بيه.','Use the current Orders Manager account and its correct password.'],
+  endpoint_not_allowed:['رابط API ده غير معتمد على السيرفر.','This API endpoint is not approved on the server.'],
+  stale_settings:['الإعدادات اتعدّلت من جلسة تانية. اقفل التعديل وافتحه تاني عشان تشوف آخر نسخة.','Settings changed in another session. Lock and reopen the editor to load the latest version.'],
+  carrier_credentials_required:['اكتب اسم المستخدم وباسورد تالا للحساب الجديد.','Enter the Tala username and password for the new account.'],
+  invalid:['راجع البيانات اللي دخلتها.','Check the details you entered.'],
+  settings_unavailable:['تعذّر حفظ الإعدادات.','Could not save settings.'],
+ };
+ const saveMessage=saveMessages[saveError]??saveMessages.settings_unavailable;
+
  return <section className="panel tala-settings">
   <div className="sectionhead"><h2>{label('إعدادات ربط تالا إكسبريس','Tala Express integration settings')}</h2>
    <span className="muted">{brand==='homey'?'HOMEY':'SODFA'}</span></div>
   <dl className="tala-connection-details">
    <dt>{label('طريقة الربط','Connection method')}</dt><dd>GraphQL · {label('اسم مستخدم وكلمة مرور من تالا','Tala-issued username and password')}</dd>
-   <dt>Endpoint</dt><dd><code dir="ltr">{talaEndpoint}</code></dd>
+   <dt>Endpoint</dt><dd><code dir="ltr">{settings?.endpoint??talaEndpoint}</code></dd>
    <dt>{label('التوثيق والدعم','Documentation and support')}</dt>
-   <dd><a href={talaDocumentation} target="_blank" rel="noreferrer">{label('توثيق API','API documentation')}</a> · <a href={'mailto:'+talaSupport}>{talaSupport}</a></dd>
+   <dd>{(settings?.documentation??talaDocumentation)&&<a href={settings?.documentation??talaDocumentation} target="_blank" rel="noreferrer">{label('توثيق API','API documentation')}</a>}
+    {(settings?.support??talaSupport)&&<span> <a href={'mailto:'+(settings?.support??talaSupport)}>{settings?.support??talaSupport}</a></span>}
+    {settings&&!settings.documentation&&!settings.support&&'—'}</dd>
    <dt>{label('بيانات الدخول على السيرفر','Server credentials')}</dt>
-   <dd><code dir="ltr">{credentials.username}</code> / <code dir="ltr">{credentials.password}</code></dd>
+   <dd>{configured?label('محفوظة على السيرفر','Stored on the server'):label('غير مضافة','Not configured')}</dd>
   </dl>
   <p role="status">{configError?label('تعذّر قراءة إعدادات الربط.','Could not load connection settings.')
    :connected?label('تم تسجيل الدخول وقراءة الخدمات.','Sign-in and service lookup succeeded.')
    :configured===null?label('جاري فحص الإعدادات…','Checking configuration…')
    :configured?label('بيانات الحساب موجودة. اختبر الاتصال.','Credentials are configured. Test the connection.')
-   :label('في انتظار بيانات حساب تالا لهذا المتجر. تُضاف في إعدادات Vercel.','Waiting for this store’s Tala account. Add its credentials in Vercel.')}</p>
-  <button className="btn" type="button" disabled={!configured||busy} onClick={()=>void request('services')}>
+   :label('في انتظار بيانات حساب تالا لهذا المتجر. افتح التعديل لإضافتها.','Waiting for this store’s Tala account. Unlock editing to add it.')}</p>
+  <div className="toolbar">
+   <span role="status">{draft?label('التعديل مفتوح','Editing unlocked'):label('الإعدادات مقفولة','Settings locked')}</span>
+   {draft?<button type="button" className="btn secondary" disabled={busy} onClick={closeEditor}>{label('قفل الإعدادات','Lock settings')}</button>
+    :<button type="button" className="btn secondary" disabled={!settings||busy} onClick={()=>{
+     setDraft(settings);setAction('save');setSaved(false);
+    }}>{label('فتح التعديل','Unlock editing')}</button>}
+  </div>
+  {saved&&<p className="notice" role="status">{label('تم حفظ الإعدادات وقفل التعديل.','Settings saved and locked.')}</p>}
+  {draft&&<form onSubmit={saveSettings} className="tracking-settings">
+   {action==='save'&&<div className="formgrid">
+    <label>API endpoint<input className="field" type="url" dir="ltr" value={draft.endpoint} maxLength={512} required
+     onChange={e=>setDraft({...draft,endpoint:e.target.value})}/></label>
+    <label>{label('رابط التوثيق','Documentation URL')}<input className="field" type="url" dir="ltr" value={draft.documentation} maxLength={512}
+     onChange={e=>setDraft({...draft,documentation:e.target.value})}/></label>
+    <label>{label('بريد الدعم','Support email')}<input className="field" type="email" dir="ltr" value={draft.support} maxLength={254}
+     onChange={e=>setDraft({...draft,support:e.target.value})}/></label>
+    <label>{label('اسم مستخدم تالا','Tala username')}<input className="field" dir="ltr" autoComplete="off" required={settings?.configured} value={draft.username} maxLength={254}
+     onChange={e=>setDraft({...draft,username:e.target.value})}/></label>
+    <label>{label('كلمة مرور تالا الجديدة','New Tala password')}<input className="field" type="password" autoComplete="new-password" value={carrierPassword} maxLength={512}
+     required={Boolean(draft.username.trim())&&(!settings?.configured||draft.username.trim()!==settings.username||draft.endpoint!==settings.endpoint)}
+     onChange={e=>setCarrierPassword(e.target.value)}/></label>
+   </div>}
+   {action==='remove'&&<p>{label('أكد حذف بيانات حساب تالا من المتجر.','Confirm removal of Tala credentials for this store.')}</p>}
+   <fieldset disabled={busy}>
+    <legend>{label('أكد بحساب مدير الطلبات اللي داخل بيه','Confirm with your current Orders Manager account')}</legend>
+    <label>{label('إيميل مدير الطلبات','Orders Manager email')}<input className="field" autoComplete="username" type="email" dir="ltr" required value={email} maxLength={254}
+     onChange={e=>setEmail(e.target.value)}/></label>
+    <label>{label('باسورد مدير الطلبات','Orders Manager password')}<input className="field" type="password" autoComplete="current-password" required value={staffPassword} maxLength={256}
+     onChange={e=>setStaffPassword(e.target.value)}/></label>
+   </fieldset>
+   {saveError&&<p className="notice error" role="alert">{label(...saveMessage)}</p>}
+   <div className="toolbar">
+    <button className={action==='remove'?'btn danger':'btn'} disabled={busy}>{action==='remove'?label('تأكيد حذف حساب تالا','Confirm Tala account removal'):label('حفظ الإعدادات','Save settings')}</button>
+    {settings?.configured&&<button type="button" className="btn secondary" disabled={busy} onClick={()=>{
+     setAction(action==='remove'?'save':'remove');setStaffPassword('');setSaveError('');
+    }}>{action==='remove'?label('رجوع للتعديل','Back to editing'):label('حذف حساب تالا','Remove Tala account')}</button>}
+   </div>
+  </form>}
+  <button className="btn" type="button" disabled={!configured||busy||Boolean(draft)} onClick={()=>void request('services')}>
    {label('اختبار الاتصال وجلب الخدمات','Test connection and load services')}
   </button>
   {error&&<p className="notice error" role="alert">{error==='missing_credentials'

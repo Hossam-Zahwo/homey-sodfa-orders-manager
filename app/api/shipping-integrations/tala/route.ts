@@ -1,6 +1,8 @@
 import {NextResponse} from 'next/server';
 import {requireAccess} from '@/lib/access';
-import {talaCredentialNames,talaEndpoint,type TalaOption,type TalaTracking} from '@/lib/tala-connection';
+import {type TalaOption,type TalaTracking} from '@/lib/tala-connection';
+import {authenticate,getStaff} from '@/lib/staff-auth';
+import {allowedTalaEndpoint,readTalaSettings,writeTalaSettings,type TalaSettings} from '@/lib/tala-settings-store';
 import type {Brand} from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -12,24 +14,22 @@ const queries = {
  subzones: 'query Subzones($id: Int!) { listZonesDropdown(input: { active: true, parentId: $id }) { id name } }',
  tracking: 'query Track($code: String) { shipment(code: $code) { code refNumber status { code name } } }',
 };
-const tokens = new Map<Brand,{token:string; expiresAt:number}>();
-const logins = new Map<Brand,Promise<string>>();
+const tokens = new Map<string,{token:string; expiresAt:number}>();
+const logins = new Map<string,Promise<string>>();
 
-function credentials(brand: Brand) {
- const names=talaCredentialNames(brand);
- const username=process.env[names.username]?.trim();
- const password=process.env[names.password];
- return username && password ? {username,password} : null;
+function publicSettings(settings:TalaSettings){
+ return {configured:Boolean(settings.input),username:settings.input?.username??'',endpoint:settings.endpoint,
+  documentation:settings.documentation,support:settings.support,revision:settings.revision};
 }
 
 class TalaError extends Error {
  constructor(readonly code: 'unreachable'|'unauthenticated'|'rejected') { super(code); }
 }
 
-async function graphql<T>(query: string, variables: object, language: 'ar'|'en', token?: string): Promise<T> {
+async function graphql<T>(endpoint:string,query: string, variables: object, language: 'ar'|'en', token?: string): Promise<T> {
  let response: Response;
  try {
-  response = await fetch(talaEndpoint, {
+  response = await fetch(endpoint, {
    method: 'POST', cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(8000),
    headers: {'Content-Type':'application/json','Content-Language':language,...(token?{Authorization:'Bearer '+token}:{})},
    body: JSON.stringify({query,variables}),
@@ -46,17 +46,18 @@ async function graphql<T>(query: string, variables: object, language: 'ar'|'en',
  return result.data;
 }
 
-async function login(brand: Brand,input: {username:string;password:string}) {
- const cached=tokens.get(brand);
+async function login(cacheKey:string,endpoint:string,input: {username:string;password:string}) {
+ const cached=tokens.get(cacheKey);
  if (cached && cached.expiresAt > Date.now()) return cached.token;
- let pending=logins.get(brand);
+ for(const [id,entry] of tokens)if(entry.expiresAt<=Date.now())tokens.delete(id);
+ let pending=logins.get(cacheKey);
  if (!pending) {
-  pending=graphql<{login:{token:string}}>(queries.login,{input},'en').then(({login})=>{
+  pending=graphql<{login:{token:string}}>(endpoint,queries.login,{input},'en').then(({login})=>{
    if (!login?.token) throw new TalaError('rejected');
-   tokens.set(brand,{token:login.token,expiresAt:Date.now()+60*60*1000});
+   tokens.set(cacheKey,{token:login.token,expiresAt:Date.now()+60*60*1000});
    return login.token;
-  }).finally(()=>logins.delete(brand));
-  logins.set(brand,pending);
+  }).finally(()=>logins.delete(cacheKey));
+  logins.set(cacheKey,pending);
  }
  return pending;
 }
@@ -66,7 +67,59 @@ export async function GET(request: Request) {
  if (blocked) return blocked;
  const brand=new URL(request.url).searchParams.get('brand');
  if (brand !== 'homey' && brand !== 'sodfa') return NextResponse.json({error:'invalid'},{status:400});
- return NextResponse.json({configured:Boolean(credentials(brand))},{headers:{'Cache-Control':'no-store'}});
+ try{
+  return NextResponse.json(publicSettings(await readTalaSettings(brand)),{headers:{'Cache-Control':'no-store'}});
+ }catch{return NextResponse.json({error:'settings_unavailable'},{status:503})}
+}
+
+export async function PATCH(request:Request){
+ const blocked=await requireAccess(request);
+ if(blocked)return blocked;
+ const body=await request.json().catch(()=>null);
+ const {brand,revision,email,password,action}=body??{};
+ if((brand!=='homey'&&brand!=='sodfa')||!Number.isSafeInteger(revision)||revision<0||
+  typeof email!=='string'||email.length>254||typeof password!=='string'||!password||password.length>256||
+  (action!=='save'&&action!=='remove')){
+  return NextResponse.json({error:'invalid'},{status:400});
+ }
+
+ try{
+  const current=await getStaff(request);
+  if(!current||email.trim().toLowerCase()!==current.email.toLowerCase()){
+   return NextResponse.json({error:'reauthentication_failed'},{status:403});
+  }
+  const confirmed=await authenticate(email,password);
+  if(confirmed?.id!==current.id)return NextResponse.json({error:'reauthentication_failed'},{status:403});
+
+  const settings=await readTalaSettings(brand);
+  if(settings.revision!==revision)return NextResponse.json({error:'stale_settings'},{status:409});
+  if(action==='remove')settings.input=null;
+  else{
+   const {endpoint,documentation,support,username,carrierPassword}=body;
+   if(typeof endpoint!=='string'||endpoint.length>512||!allowedTalaEndpoint(endpoint)){
+    return NextResponse.json({error:'endpoint_not_allowed'},{status:400});
+   }
+   if(typeof documentation!=='string'||documentation.length>512||
+    typeof support!=='string'||support.length>254||(support&&!/^[^\s?&#]+@[^\s?&#]+\.[^\s?&#]+$/.test(support))||
+    typeof username!=='string'||username.length>254||typeof carrierPassword!=='string'||carrierPassword.length>512){
+    return NextResponse.json({error:'invalid'},{status:400});
+   }
+   if(documentation){
+    let url:URL;
+    try{url=new URL(documentation)}catch{return NextResponse.json({error:'invalid'},{status:400})}
+    if(url.protocol!=='https:'||url.username||url.password)return NextResponse.json({error:'invalid'},{status:400});
+   }
+   const carrierUser=username.trim();
+   const existingPassword=endpoint===settings.endpoint&&carrierUser===settings.input?.username?settings.input.password:'';
+   const nextPassword=carrierPassword||existingPassword;
+   if(settings.input&&!carrierUser)return NextResponse.json({error:'carrier_credentials_required'},{status:400});
+   if(Boolean(carrierUser)!==Boolean(nextPassword))return NextResponse.json({error:'carrier_credentials_required'},{status:400});
+   Object.assign(settings,{endpoint,documentation,support,input:carrierUser?{username:carrierUser,password:nextPassword}:null});
+  }
+
+  if(!await writeTalaSettings(brand,settings,current.id))return NextResponse.json({error:'stale_settings'},{status:409});
+  return NextResponse.json(publicSettings({...settings,revision:revision+1}),{headers:{'Cache-Control':'no-store'}});
+ }catch{return NextResponse.json({error:'settings_unavailable'},{status:503})}
 }
 
 export async function POST(request: Request) {
@@ -75,8 +128,6 @@ export async function POST(request: Request) {
  const body=await request.json().catch(()=>null);
  const brand=body?.brand;
  if (brand !== 'homey' && brand !== 'sodfa') return NextResponse.json({error:'invalid'},{status:400});
- const input=credentials(brand);
- if (!input) return NextResponse.json({error:'missing_credentials'},{status:409});
  const operation:unknown=body.operation;
  const id=body.id;
  const code=typeof body.code==='string'?body.code.trim():'';
@@ -91,14 +142,18 @@ export async function POST(request: Request) {
  const variables=operation==='services'?{}:operation==='tracking'?{code}:{id};
  type Data = {listShippingServicesDropdown?:TalaOption[];listZonesDropdown?:TalaOption[];shipment?:TalaTracking|null};
  try {
-  let token=await login(brand,input);
+  const {input,endpoint,revision}=await readTalaSettings(brand as Brand);
+  if(!input)return NextResponse.json({error:'missing_credentials'},{status:409});
+  if(!allowedTalaEndpoint(endpoint))return NextResponse.json({error:'endpoint_not_allowed'},{status:409});
+  const cacheKey=brand+':'+revision;
+  let token=await login(cacheKey,endpoint,input);
   let data: Data;
-  try { data=await graphql<Data>(queries[operation],variables,language,token); }
+  try { data=await graphql<Data>(endpoint,queries[operation],variables,language,token); }
   catch (error) {
    if (!(error instanceof TalaError) || error.code!=='unauthenticated') throw error;
-   if (tokens.get(brand)?.token===token) tokens.delete(brand);
-   token=await login(brand,input);
-   data=await graphql<Data>(queries[operation],variables,language,token);
+   if (tokens.get(cacheKey)?.token===token) tokens.delete(cacheKey);
+   token=await login(cacheKey,endpoint,input);
+   data=await graphql<Data>(endpoint,queries[operation],variables,language,token);
   }
   return NextResponse.json({data:operation==='tracking'?data.shipment??null:data.listShippingServicesDropdown??data.listZonesDropdown??[]});
  } catch (error) {

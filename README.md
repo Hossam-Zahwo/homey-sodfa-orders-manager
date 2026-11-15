@@ -71,3 +71,9 @@ Tala's current rates and settlement calculations work through the existing order
 In **Settings** or the Tala entry under **Shipping integrations**, staff can verify the Tala-issued account, read service and zone IDs, and look up an existing shipment. Set `TALA_HOMEY_USERNAME` and `TALA_HOMEY_PASSWORD` as server environment variables. If Tala issues a separate SODFA account, use `TALA_SODFA_USERNAME` and `TALA_SODFA_PASSWORD` for that store. The app does not expose the credentials or bearer token to the browser. The official endpoint and documentation are shown in settings.
 
 This connection test uses GraphQL login and reads only. The dashboard does not send orders or accept callbacks until shipment persistence, area mapping, and trusted callback verification are implemented.
+
+### Editing Tala settings in the dashboard
+
+Apply `neon/migrations/20261115_tala_settings.sql` before enabling dashboard writes in production. The editor opens locked and confirms each save or removal against the active staff account using its email and password. Saving closes the editor. The database stores encrypted carrier credentials and the staff account that last updated the settings.
+
+Server environment credentials remain the initial fallback. A saved configuration, including one with its credentials explicitly removed, takes precedence. Configure a stable `TALA_SETTINGS_ENCRYPTION_SECRET` before first use if session keys are rotated independently. Changing the encryption secret requires re-encrypting the existing settings. Additional Tala endpoints must be approved via `TALA_ALLOWED_ENDPOINTS` before staff can select them, and changing endpoints requires re-entering Tala's password.
