@@ -178,3 +178,10 @@
 .tala-destination { min-width: 0; border: 1px solid #dce3d5; border-radius: 8px; padding: .75rem; }
 .tala-destination legend { font-weight: 700; }
 .city-results .city-add-option { font-weight: 700; color: var(--primary); border-block-start: 1px solid #e2e6dc; }
+
+@media screen and (max-width: 640px) {
+ .order-city-fields .city-popup { position: static; box-shadow: none; }
+ .order-city-fields .city-popup input[type="search"] { width: 100%; min-width: 0; font-size: 16px; }
+ .order-city-fields .city-results { overscroll-behavior: contain; touch-action: pan-y; }
+ .order-city-fields .city-results button { min-height: 44px; }
+}

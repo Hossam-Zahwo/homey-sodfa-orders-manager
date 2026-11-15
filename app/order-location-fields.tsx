@@ -23,7 +23,21 @@ export function OrderLocationFields({locations, governorate, city, required, onC
  const [addError,setAddError]=useState(false);
  const addRequest=useRef<AbortController|null>(null);
  useEffect(()=>()=>addRequest.current?.abort(),[]);
+ const picker=useRef<HTMLDivElement>(null);
  const trigger=useRef<HTMLButtonElement>(null);
+
+ useEffect(()=>{
+  if(!open)return;
+  function closeOutside(event:Event){
+   if(event.target instanceof Node&&!picker.current?.contains(event.target))setOpen(false);
+  }
+  document.addEventListener('pointerdown',closeOutside);
+  document.addEventListener('focusin',closeOutside);
+  return ()=>{
+   document.removeEventListener('pointerdown',closeOutside);
+   document.removeEventListener('focusin',closeOutside);
+  };
+ },[open]);
  const popupId=useId();
  const governorates=Object.keys(locations).sort((a,b)=>a.localeCompare(b,'ar'));
  const cities=locations[governorate]??[];
@@ -46,7 +60,7 @@ export function OrderLocationFields({locations, governorate, city, required, onC
    onAreaAdded(data.governorate,data.city);
    onChange(data.governorate,data.city);
    setOpen(false);
-   trigger.current?.focus();
+   trigger.current?.focus({preventScroll:true});
   }catch{if(!controller.signal.aborted)setAddError(true);}
   finally{if(!controller.signal.aborted)setAdding(false);}
  }
@@ -62,8 +76,8 @@ export function OrderLocationFields({locations, governorate, city, required, onC
     {governorates.map(name=><option key={name} value={name}>{t(name)}</option>)}
    </select>
   </label>
-  <div className="order-city-fields" onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget))setOpen(false)}}
-   onKeyDown={e=>{if(e.key==='Escape'&&open){e.preventDefault();e.stopPropagation();setOpen(false);trigger.current?.focus()}}}>
+  <div className="order-city-fields" ref={picker}
+   onKeyDown={e=>{if(e.key==='Escape'&&open){e.preventDefault();e.stopPropagation();setOpen(false);trigger.current?.focus({preventScroll:true})}}}>
    <span>{t("المدينة / المنطقة")}</span>
    <button type="button" className="field city-trigger" ref={trigger} disabled={!governorate} aria-label={t("المدينة / المنطقة: ")+(city||t("اختار المدينة"))}
     aria-expanded={open} aria-controls={open?popupId:undefined} onClick={()=>{setQuery('');setAddError(false);setOpen(!open)}}>
@@ -71,13 +85,13 @@ export function OrderLocationFields({locations, governorate, city, required, onC
    </button>
    <input type="hidden" name="city" value={city}/>
    <input className="city-validation" tabIndex={-1} aria-hidden="true" required={cityRequired} value={city} onChange={()=>{}}
-    onInvalid={e=>{e.preventDefault();setQuery('');setOpen(true);trigger.current?.focus()}}/>
+    onInvalid={e=>{e.preventDefault();setQuery('');setOpen(true);trigger.current?.focus({preventScroll:true})}}/>
    {open&&<div className="city-popup" id={popupId}>
-    <input autoFocus className="field" type="search" maxLength={120} readOnly={adding} aria-label={t("ابحث عن مدينة أو منطقة")} placeholder={t("ابحث بالاسم")} value={query}
+    <input className="field" type="search" maxLength={120} readOnly={adding} aria-label={t("ابحث عن مدينة أو منطقة")} placeholder={t("ابحث بالاسم")} value={query}
      onKeyDown={e=>{if(e.key==='Enter')e.preventDefault()}} onChange={e=>setQuery(e.target.value)}/>
     <div className="city-results" role="group" aria-label={t("المدن والمناطق")}>
      {matches.map(name=><button key={name} type="button" aria-pressed={city===name} onClick={()=>{
-      onChange(governorate,name);setOpen(false);trigger.current?.focus();
+      onChange(governorate,name);setOpen(false);trigger.current?.focus({preventScroll:true});
      }}>{name}</button>)}
      {onAreaAdded&&query.trim().length>=2&&!options.some(name=>searchable(name)===searchable(query))&&
       <button type="button" className="city-add-option" onClick={()=>void addArea()} disabled={adding}>
