@@ -153,3 +153,10 @@ export async function addShippingCompany(name:string):Promise<string>{
  ON CONFLICT ((lower(name))) DO UPDATE SET name=shipping_companies.name RETURNING name`;
  return String(rows[0].name);
 }
+
+export async function addOrderLocality(governorate:string,city:string):Promise<boolean>{
+ const rows=await sql()`INSERT INTO public.address_localities(governorate,name)
+  SELECT name,${city} FROM public.address_governorates WHERE name=${governorate}
+  ON CONFLICT (governorate,name) DO UPDATE SET name=EXCLUDED.name RETURNING name`;
+ return rows.length>0;
+}

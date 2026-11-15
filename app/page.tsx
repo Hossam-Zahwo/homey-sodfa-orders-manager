@@ -426,7 +426,9 @@ export default function Page(){
     <div className="formgrid order-basics">
      {inputOrder('customerName',t("اسم العميل"),true)}
      {inputOrder('phone',t("رقم التليفون"),true)}
-     <OrderLocationFields locations={orderLocations} governorate={editing.governorate} city={editing.city} required={!editing.id} onChange={(governorate,city)=>changeShippingLocation({governorate,city})}/>
+     <OrderLocationFields locations={orderLocations} governorate={editing.governorate} city={editing.city} required={!editing.id}
+      onAreaAdded={(governorate,city)=>setOrderLocations(locations=>({...locations,[governorate]:[...new Set([...(locations[governorate]??[]),city])].sort((a,b)=>a.localeCompare(b,'ar'))}))}
+      onChange={(governorate,city)=>changeShippingLocation({governorate,city})}/>
      {orderLocationError&&<div className="full notice error" role="alert">{orderLocationError} <button type="button" className="btn secondary tiny" onClick={loadOrderLocations}>{t("إعادة المحاولة")}</button></div>}
      <label className="full">{t("العنوان بالتفصيل")}
       <input className="field" required={!editing.id} value={editing.address} onChange={e=>setEditing({...editing,address:e.target.value})}/>
@@ -446,7 +448,7 @@ export default function Page(){
      </label>
      {numOrder('shipping',t("تكلفة الشحن"))}
      {!editing.id&&editing.brand==='homey'&&editing.shippingCompany===talaExpress&&!closedWithoutDelivery(editing)&&editing.status!=='delivered'&&
-      <TalaDestinationFields key={editing.governorate+':'+editing.city}/>}
+      <TalaDestinationFields key={editing.governorate+':'+editing.city} governorate={editing.governorate} city={editing.city}/>}
 
      {editing.shippingCompany===talaExpress&&editing.city&&talaRate(talaExpress,editing.governorate,editing.city)===undefined&&
       <small className="full muted">{t("سعر تالا للمنطقة دي محتاج تأكيد. اكتب تكلفة الشحن يدويًا.")}</small>}

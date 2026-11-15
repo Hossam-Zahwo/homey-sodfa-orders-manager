@@ -177,3 +177,4 @@
 
 .tala-destination { min-width: 0; border: 1px solid #dce3d5; border-radius: 8px; padding: .75rem; }
 .tala-destination legend { font-weight: 700; }
+.city-results .city-add-option { font-weight: 700; color: var(--primary); border-block-start: 1px solid #e2e6dc; }

@@ -4,7 +4,17 @@ import {useEffect,useState} from 'react';
 import {useLanguage} from './language';
 import type {TalaOption} from '@/lib/tala-connection';
 
-export function TalaDestinationFields(){
+const matchName=(value:string)=>value.normalize('NFKD').replace(/[\p{M}ـ]/gu,'')
+ .replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').toLowerCase().trim().replace(/\s+/g,' ');
+
+function exactOption(options:TalaOption[],name:string){
+ const expected=matchName(name);
+ if(!expected)return '';
+ const matches=options.filter(option=>matchName(option.name)===expected);
+ return matches.length===1?String(matches[0].id):'';
+}
+
+export function TalaDestinationFields({governorate,city}:{governorate:string;city:string}){
  const {language}=useLanguage();
  const [service,setService]=useState('');
  const [zone,setZone]=useState('');
@@ -13,6 +23,7 @@ export function TalaDestinationFields(){
  const [zones,setZones]=useState<TalaOption[]>([]);
  const [subzones,setSubzones]=useState<TalaOption[]>([]);
  const [failed,setFailed]=useState(false);
+ const [loading,setLoading]=useState(true);
  const [retry,setRetry]=useState(0);
  const label=(ar:string,en:string)=>language==='ar'?ar:en;
 
@@ -27,13 +38,22 @@ export function TalaDestinationFields(){
    const result=await response.json();
    return result.data as TalaOption[];
   }
-  setFailed(false);
-  const load=zone?request('subzones',Number(zone)).then(setSubzones)
-   :service?request('zones',Number(service)).then(setZones)
-   :request('services').then(setServices);
-  load.catch(()=>{if(!controller.signal.aborted)setFailed(true)});
+  setFailed(false);setLoading(true);
+  const load=zone?request('subzones',Number(zone)).then(list=>{
+   if(controller.signal.aborted)return;
+   setSubzones(list);setSubzone(current=>current||exactOption(list,city));
+  }):service?request('zones',Number(service)).then(list=>{
+   if(controller.signal.aborted)return;
+   setZones(list);setZone(current=>current||exactOption(list,governorate));
+  }):request('services').then(list=>{
+   if(controller.signal.aborted)return;
+   setServices(list);
+   if(list.length===1)setService(String(list[0].id));
+  });
+  load.catch(()=>{if(!controller.signal.aborted)setFailed(true)})
+   .finally(()=>{if(!controller.signal.aborted)setLoading(false)});
   return ()=>controller.abort();
- },[service,zone,language,retry]);
+ },[service,zone,language,retry,governorate,city]);
 
  return <fieldset className="full tala-destination">
   <legend>{label('الإرسال التلقائي لتالا','Automatic dispatch to Tala')}</legend>
@@ -56,6 +76,9 @@ export function TalaDestinationFields(){
      {subzones.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
     </select></label>
   </div>
+  {loading&&<p className="muted" role="status">{label('جاري تحميل خيارات تالا…','Loading Tala options…')}</p>}
+  {!loading&&!failed&&service&&(!zones.length||(zone&&!subzones.length))&&
+   <p className="notice" role="status">{label('تالا ما رجّعتش مناطق للخدمة أو المنطقة دي. جرّب اختيار تاني أو اطلب من تالا تفعيل المنطقة.','Tala returned no areas for this service or zone. Choose another option or ask Tala to enable the area.')}</p>}
   {failed&&<p role="alert">{label('تعذّر تحميل بيانات تالا. راجع الربط في الإعدادات.','Could not load Tala options. Check the connection in Settings.')}
    {' '}<button type="button" className="btn secondary tiny" onClick={()=>setRetry(value=>value+1)}>{label('أعد المحاولة','Retry')}</button></p>}
   <small className="muted">{label('حفظ الطلب هيبعت الشحنة لتالا.','Saving this order sends the shipment to Tala.')}</small>

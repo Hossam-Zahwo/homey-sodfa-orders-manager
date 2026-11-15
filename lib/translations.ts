@@ -1,4 +1,7 @@
 export const english: Readonly<Record<string, string>> = {
+  "إضافة المنطقة لهومي": "Add area to Homey",
+  "جاري إضافة المنطقة…": "Adding area…",
+  "تعذّر إضافة المنطقة. راجع الاسم وحاول تاني.": "Could not add the area. Check the name and try again.",
   "رقم التتبع": "Tracking number",
   "راجع حالة الإرسال في تالا": "Check dispatch status in Tala",
   "تم إرسال الشحنة لتالا. رقم التتبع": "Shipment sent to Tala. Tracking number",
