@@ -1,7 +1,8 @@
 'use client';
 
 import {Edit3,Package,Printer,Truck,X} from 'lucide-react';
-import {useTranslation} from './language';
+import {useEffect,useState} from 'react';
+import {useLanguage,useTranslation} from './language';
 import {carrierAmounts,collectionFromCustomer,collectionLabels,collectionState} from '@/lib/carrier-tracking';
 import {canPrepareShipment} from '@/lib/shipping-handoff';
 import {statusLabels,totalOf,type Order} from '@/lib/types';
@@ -13,6 +14,28 @@ type Props = {
  print:()=>void;
  prepare:()=>void;
 };
+
+function TalaOrderStatus({code,brand}:{code:string;brand:Order['brand']}){
+ const t=useTranslation();
+ const {language}=useLanguage();
+ const [result,setResult]=useState<{key:string;status:string}|null>(null);
+ const key=brand+':'+code+':'+language;
+ useEffect(()=>{
+  const controller=new AbortController();
+  fetch('/api/shipping-integrations/tala',{
+   method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,
+   body:JSON.stringify({brand,code,language,operation:'tracking'}),
+  }).then(async response=>{
+   if(!response.ok)throw new Error();
+   const {data}=await response.json();
+   if(!controller.signal.aborted)setResult({key,status:data?.status?.name||data?.status?.code||''});
+  }).catch(()=>{
+   if(!controller.signal.aborted)setResult({key,status:''});
+  });
+  return ()=>controller.abort();
+ },[brand,code,key,language]);
+ return <span role="status">{result?.key!==key?t('جاري قراءة حالة تالا…'):result.status||t('حالة تالا غير متاحة حاليًا')}</span>;
+}
 
 export function OrderDetails({order,close,edit,print,prepare}:Props){
  const t=useTranslation();
@@ -34,7 +57,8 @@ export function OrderDetails({order,close,edit,print,prepare}:Props){
     <dl>
      <dt>{t('رقم التليفون')}</dt><dd><a href={'tel:'+order.phone} dir="ltr">{order.phone}</a>{order.alternatePhone&&<> · <a href={'tel:'+order.alternatePhone} dir="ltr">{order.alternatePhone}</a></>}</dd>
      <dt>{t('العنوان')}</dt><dd>{[t(order.governorate),order.city,order.address].filter(Boolean).join(' · ')||'—'}</dd>
-     {order.talaTrackingCode&&<><dt>{t('رقم التتبع')}</dt><dd><bdi>{order.talaTrackingCode}</bdi></dd></>}
+     {order.talaTrackingCode&&<><dt>{t('رقم التتبع')}</dt><dd><bdi>{order.talaTrackingCode}</bdi></dd>
+      <dt>{t('الحالة عند تالا')}</dt><dd><TalaOrderStatus code={order.talaTrackingCode} brand={order.brand}/></dd></>}
      {order.talaDispatchState&&order.talaDispatchState!=='sent'&&<><dt>{t('ربط شركات الشحن')}</dt><dd>{t('راجع حالة الإرسال في تالا')}</dd></>}
      <dt>{t('شركة الشحن')}</dt><dd>{t(order.shippingCompany||'توصيل بنفسي')}</dd>
     </dl>

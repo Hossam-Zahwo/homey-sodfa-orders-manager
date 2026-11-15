@@ -119,6 +119,7 @@ export default function Page(){
  const inPeriod=(date:string)=>{if(period==='all')return true;const parsed=new Date(date);if(Number.isNaN(parsed.getTime()))return false;const d=cairoDay.format(parsed),today=new Date(cairoDay.format(new Date())+'T00:00:00');if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return false;const dt=new Date(d+'T12:00:00');if(Number.isNaN(dt.getTime()))return false;if(period==='today')return dt.toDateString()===today.toDateString();if(period==='week'){const start=new Date(today);start.setDate(today.getDate()-((today.getDay()+6)%7));return dt>=start&&dt<=new Date(today.getTime()+86400000)}if(period==='month')return dt.getFullYear()===today.getFullYear()&&dt.getMonth()===today.getMonth();return (!fromDate||d>=fromDate)&&(!toDate||d<=toDate)};
  const brandOrders=orders.filter(o=>o.brand===brand).sort((a,b)=>Date.parse(b.enteredAt||b.createdAt)-Date.parse(a.enteredAt||a.createdAt));
  const detailOrder=brandOrders.find(order=>order.id===detailOrderId);
+ const canRetryTala=Boolean(editing?.id&&editing.brand==='homey'&&editing.shippingCompany===talaExpress&&editing.talaDispatchState==='review'&&!closedWithoutDelivery(editing)&&editing.status!=='delivered');
  const periodOrders=brandOrders.filter(o=>inPeriod(o.enteredAt||o.createdAt));
  const matchesCarrier=(o:Order)=>!carrierFilter||(o.shippingCompany||'')===carrierFilter;
  const visible=periodOrders.filter(o=>matchesCarrier(o)&&(collectionFilter==='all'||collectionState(o)===collectionFilter)&&(tab!=='orders'||!unprintedOnly||!printed.has('order:'+o.id))&&(filter==='all'||(filter==='active'?o.status!=='cancelled':o.status===filter))&&[o.customerName,o.phone,o.id,o.address,o.items.map(i=>i.name).join(' ')].join(' ').toLowerCase().includes(search.toLowerCase()));
@@ -304,11 +305,14 @@ export default function Page(){
  }
  async function saveOrder(e:React.FormEvent<HTMLFormElement>){e.preventDefault();if(!editing||busy)return;
   const fields=new FormData(e.currentTarget);
+  const submitter=(e.nativeEvent as SubmitEvent).submitter;
+  const retryTala=submitter instanceof HTMLButtonElement&&submitter.value==='retry-tala';
   if(editing.shippingCompany===talaExpress&&talaRate(talaExpress,editing.governorate,editing.city)===undefined&&editing.shipping<=0){
    setErr('اكتب تكلفة شحن تالا للمنطقة دي قبل الحفظ.');return;
   }
-  setBusy(true);setErr('');try{const {tala}=await api('orders','POST',{...editing,talaDestination:{
+  setBusy(true);setErr('');try{const {tala}=await api('orders','POST',{...editing,retryTala,talaDestination:{
    serviceId:Number(fields.get('talaService')),zoneId:Number(fields.get('talaZone')),subzoneId:Number(fields.get('talaSubzone')),
+   weight:Number(fields.get('talaWeight')),piecesCount:Number(fields.get('talaPieces')),typeCode:fields.get('talaType'),openableCode:fields.get('talaOpenable'),
   }});setEditing(null);setNotice(tala?.state==='sent'?t('تم إرسال الشحنة لتالا. رقم التتبع')+' '+tala.trackingCode
    :tala?.state==='review'?'اتحفظ الأوردر. راجع مرجعه في تالا قبل ما تبعته مرة تانية.'
    :tala?.state==='unavailable'?'اتحفظ الأوردر، والإرسال لتالا غير متاح دلوقتي.':'تم حفظ الطلب');await reload()}catch(e){setErr((e as Error).message)}finally{setBusy(false)}}
@@ -447,8 +451,8 @@ export default function Page(){
       </select>
      </label>
      {numOrder('shipping',t("تكلفة الشحن"))}
-     {!editing.id&&editing.brand==='homey'&&editing.shippingCompany===talaExpress&&!closedWithoutDelivery(editing)&&editing.status!=='delivered'&&
-      <TalaDestinationFields key={editing.governorate+':'+editing.city} governorate={editing.governorate} city={editing.city}/>}
+     {(!editing.id||canRetryTala)&&editing.brand==='homey'&&editing.shippingCompany===talaExpress&&!closedWithoutDelivery(editing)&&editing.status!=='delivered'&&
+      <TalaDestinationFields key={editing.governorate+':'+editing.city} governorate={editing.governorate} city={editing.city} retryOrder={canRetryTala}/>}
 
      {editing.shippingCompany===talaExpress&&editing.city&&talaRate(talaExpress,editing.governorate,editing.city)===undefined&&
       <small className="full muted">{t("سعر تالا للمنطقة دي محتاج تأكيد. اكتب تكلفة الشحن يدويًا.")}</small>}
@@ -508,7 +512,8 @@ export default function Page(){
     {err&&<div className="notice error" role="alert">{t(err)}</div>}
     <div className="modalfooter">
      <button type="button" className="btn secondary" onClick={()=>setEditing(null)}>{t("إلغاء")}</button>
-     <button type="submit" className="btn" disabled={busy||(!editing.id&&!Object.keys(orderLocations).length)}><ShieldCheck size={17}/>{t("حفظ الطلب")}</button>
+     {canRetryTala&&<button type="submit" className="btn" value="retry-tala" disabled={busy}><Truck size={17}/>{t('حفظ وإعادة الإرسال لتالا')}</button>}
+     <button type="submit" formNoValidate={canRetryTala} className={canRetryTala?'btn secondary':'btn'} disabled={busy||(!editing.id&&!Object.keys(orderLocations).length)}><ShieldCheck size={17}/>{t("حفظ الطلب")}</button>
     </div>
    </form>
   </section>

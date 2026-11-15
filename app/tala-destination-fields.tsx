@@ -14,7 +14,7 @@ function exactOption(options:TalaOption[],name:string){
  return matches.length===1?String(matches[0].id):'';
 }
 
-export function TalaDestinationFields({governorate,city}:{governorate:string;city:string}){
+export function TalaDestinationFields({governorate,city,retryOrder=false}:{governorate:string;city:string;retryOrder?:boolean}){
  const {language}=useLanguage();
  const [service,setService]=useState('');
  const [zone,setZone]=useState('');
@@ -56,7 +56,7 @@ export function TalaDestinationFields({governorate,city}:{governorate:string;cit
  },[service,zone,language,retry,governorate,city]);
 
  return <fieldset className="full tala-destination">
-  <legend>{label('الإرسال التلقائي لتالا','Automatic dispatch to Tala')}</legend>
+  <legend>{retryOrder?label('إعادة الإرسال لتالا','Retry Tala dispatch'):label('الإرسال التلقائي لتالا','Automatic dispatch to Tala')}</legend>
   <div className="formgrid order-basics">
    <label>{label('خدمة الشحن عند تالا','Tala shipping service')}
     <select className="field" name="talaService" required value={service} onChange={event=>{
@@ -76,11 +76,32 @@ export function TalaDestinationFields({governorate,city}:{governorate:string;cit
      {subzones.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
     </select></label>
   </div>
+  <div className="formgrid order-basics">
+   <label>{label('وزن الشحنة بالكيلو','Shipment weight (kg)')}
+    <input type="number" className="field" name="talaWeight" defaultValue="1" min="0.01" max="1000" step="0.01" inputMode="decimal" required/>
+   </label>
+   <label>{label('عدد الطرود','Number of parcels')}
+    <input type="number" className="field" name="talaPieces" min="1" max="1000" step="1" inputMode="numeric" defaultValue="1" required/>
+   </label>
+   <label>{label('نوع الشحنة','Shipment type')}
+    <select name="talaType" className="field" defaultValue="FDP" required>
+     <option value="FDP">{label('توصيل عادي','Regular delivery')}</option>
+    </select>
+   </label>
+   <label>{label('هل مسموح بفتح الطرد؟','Can the recipient open the parcel?')}
+    <select name="talaOpenable" className="field" defaultValue="N" required>
+     <option value="" disabled>{label('اختار','Select')}</option>
+     <option value="Y">{label('مسموح','Allowed')}</option>
+     <option value="N">{label('غير مسموح','Not allowed')}</option>
+    </select>
+   </label>
+  </div>
   {loading&&<p className="muted" role="status">{label('جاري تحميل خيارات تالا…','Loading Tala options…')}</p>}
   {!loading&&!failed&&service&&(!zones.length||(zone&&!subzones.length))&&
    <p className="notice" role="status">{label('تالا ما رجّعتش مناطق للخدمة أو المنطقة دي. جرّب اختيار تاني أو اطلب من تالا تفعيل المنطقة.','Tala returned no areas for this service or zone. Choose another option or ask Tala to enable the area.')}</p>}
   {failed&&<p role="alert">{label('تعذّر تحميل بيانات تالا. راجع الربط في الإعدادات.','Could not load Tala options. Check the connection in Settings.')}
    {' '}<button type="button" className="btn secondary tiny" onClick={()=>setRetry(value=>value+1)}>{label('أعد المحاولة','Retry')}</button></p>}
-  <small className="muted">{label('حفظ الطلب هيبعت الشحنة لتالا.','Saving this order sends the shipment to Tala.')}</small>
+  <small className="muted">{label('راجع الوزن وعدد الطرود والسماح بالفتح لو الشحنة مختلفة عن العادي.','Check the weight, parcel count, and opening permission if this shipment differs from your usual orders.')}</small>
+  <small className="muted">{retryOrder?label('اضغط حفظ وإعادة الإرسال بعد مراجعة بيانات الطرد.','Use Save and resend after checking the parcel details.'):label('حفظ الطلب هيبعت الشحنة لتالا.','Saving this order sends the shipment to Tala.')}</small>
  </fieldset>;
 }

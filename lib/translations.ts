@@ -1,4 +1,9 @@
 export const english: Readonly<Record<string, string>> = {
+  "الحالة عند تالا": "Tala status",
+  "جاري قراءة حالة تالا…": "Reading Tala status…",
+  "حالة تالا غير متاحة حاليًا": "Tala status is currently unavailable",
+  "حفظ وإعادة الإرسال لتالا": "Save and resend to Tala",
+  "اختار خدمة تالا والمنطقة وكمّل بيانات الطرد.": "Select the Tala service and destination, and complete the parcel details.",
   "إضافة المنطقة لهومي": "Add area to Homey",
   "جاري إضافة المنطقة…": "Adding area…",
   "تعذّر إضافة المنطقة. راجع الاسم وحاول تاني.": "Could not add the area. Check the name and try again.",
