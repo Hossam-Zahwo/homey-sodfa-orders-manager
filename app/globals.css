@@ -708,3 +708,14 @@ button.tracking-card:hover { border-color: currentColor; }
 .install-app p { margin: 8px 0 0; line-height: 1.6; }
 .top-actions .install-app p { position: absolute; z-index: 30; inset-inline-end: 0; width: min(250px, 65vw); padding: 10px; background: white; border: 1px solid var(--border); border-radius: 8px; }
 .login-premium .install-app { margin-top: 12px; }
+
+.tala-settings { margin-bottom: 1rem; }
+.tala-connection-details { display: grid; grid-template-columns: minmax(7rem, 1fr) 3fr; gap: .5rem 1rem; }
+.tala-connection-details dt { font-weight: 700; }
+.tala-connection-details dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.tala-settings .toolbar { flex-wrap: wrap; }
+.login-language { justify-content: space-between; }
+[dir="ltr"] :is(.nav button,.table,.stat b,.login .panel,.login-eyebrow,.login h1,.sidebar-bottom small) { text-align: start; }
+@media (max-width: 760px) {
+ [dir="ltr"] .app .sidebar { right: auto; left: 0; }
+}

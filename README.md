@@ -50,3 +50,24 @@ git push origin feature/username-password-order-workflow
 Responsive styles support desktop, tablet and mobile dashboards, forms and navigation.
 A4 paper preview intentionally retains physical A4 size and scrolls horizontally on small
 screens; print output remains 3 or 4 stickers per page.
+
+## Shipping integrations
+
+In the private dashboard, open **ربط شركات الشحن**, choose a carrier, and select the orders to export for the active brand. The carrier directory opens the same view for a specific company. The bulk action in Orders carries the selection over when every selected order is eligible and belongs to the same carrier.
+
+The generic CSV includes the stable order ID, recipient and delivery fields, and the amount the carrier should collect from the recipient in EGP. That amount comes from the existing order calculation, including manual collection overrides. Staff can opt in to exporting shipment contents. Confirm the carrier's required headers, field formats, and area codes before uploading. Exporting leaves the order and collection status untouched.
+
+### Adding a carrier connection
+
+1. Obtain the carrier's API documentation or file specification, account ID, area and service codes, test access, supported operations, and tracking and settlement formats. Configure credentials on the server.
+2. Map the request from the saved order and extend the shipment data only where the carrier requires it. Persist a separate shipment record with the carrier shipment ID, tracking number, waybill metadata, and last synchronized order version. Use the order reference as the external reference and the carrier's idempotency mechanism. Reconcile an unknown result before retrying creation.
+3. Create shipments only after the configured dispatch trigger for that carrier. Sync permitted changes to an existing shipment by its external ID, respecting the carrier's editing and cancellation rules.
+4. Verify incoming webhook messages or poll the provider, deduplicate events, and map delivery and return codes. Apply events only to the matching shipment. Keep carrier settlement amounts separate from delivery events and from the amount to collect at the door.
+
+Tala's current rates and settlement calculations work through the existing order flow. The shipping CSV is available for Tala and other assigned carriers. Live adapters, carrier templates, tracking callbacks, and settlement ingestion require the provider specifications and are not enabled by this change.
+
+### Tala Express connection settings
+
+In **Settings** or the Tala entry under **Shipping integrations**, staff can verify the Tala-issued account, read service and zone IDs, and look up an existing shipment. Set `TALA_HOMEY_USERNAME` and `TALA_HOMEY_PASSWORD` as server environment variables. If Tala issues a separate SODFA account, use `TALA_SODFA_USERNAME` and `TALA_SODFA_PASSWORD` for that store. The app does not expose the credentials or bearer token to the browser. The official endpoint and documentation are shown in settings.
+
+This connection test uses GraphQL login and reads only. The dashboard does not send orders or accept callbacks until shipment persistence, area mapping, and trusted callback verification are implemented.

@@ -1,4 +1,6 @@
 'use client';
+import {useTranslation} from '@/app/language';
+
 import {printDocuments,printKeys} from '@/lib/print-history';
 import {useEffect,useState} from 'react';
 import {Printer,ArrowRight,ShoppingBag} from 'lucide-react';
@@ -6,24 +8,25 @@ import type {Order} from '@/lib/types';
 import {collectionFromCustomer} from '@/lib/carrier-tracking';
 import {calculatedTotal,totalOf} from '@/lib/types';
 import {HomeyLogo} from '@/components/homey-logo';
-const fmt=(n:number)=>new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+' ج.م';
 export default function Invoice({params}:{params:Promise<{id:string}>}){
+ const t=useTranslation();
+ const fmt=(n:number)=>new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+' '+t('ج.م');
  const [order,setOrder]=useState<Order|null>(null),[err,setErr]=useState(''),[loading,setLoading]=useState(true);
  useEffect(()=>{let active=true;params.then(async({id})=>{try{const r=await fetch('/api/orders',{credentials:'same-origin',cache:'no-store'});const j=await r.json();if(!r.ok)throw Error('لازم تسجّل الدخول الأول');const found=(j.data as Order[]).find(x=>x.id===id);if(!found)throw Error('الطلب غير موجود');if(active)setOrder(found)}catch(e){if(active)setErr(e instanceof Error?e.message:'حصل خطأ')}finally{if(active)setLoading(false)}});return()=>{active=false}},[params]);
- if(loading)return <main className="invoice-state">جاري تحميل الفاتورة...</main>;
- if(err||!order)return <main className="invoice-state">{err||'الفاتورة غير متاحة'} <a href="/">رجوع</a></main>;
+ if(loading)return <main className="invoice-state">{t("جاري تحميل الفاتورة...")}</main>;
+ if(err||!order)return <main className="invoice-state">{err||t("الفاتورة غير متاحة")} <a href="/">{t("رجوع")}</a></main>;
  const subtotal=order.items.reduce((v,x)=>v+x.price*x.quantity,0);
  const manualAdjustment=Math.round((totalOf(order)-calculatedTotal(order))*100)/100;
- return <main dir="rtl" className="invoice-page">
-  <div className="invoice-actions"><a href="/"><ArrowRight size={17}/> الرجوع للطلبات</a><button onClick={()=>void printDocuments(printKeys([order])).catch(()=>alert('اتفتح مربع الطباعة، لكن حالة الطباعة ما اتحفظتش.'))}><Printer size={18}/> طباعة / حفظ PDF</button></div>
+ return <main className="invoice-page">
+  <div className="invoice-actions"><a href="/"><ArrowRight size={17}/>{t("الرجوع للطلبات")}</a><button onClick={()=>void printDocuments(printKeys([order])).catch(()=>alert(t('اتفتح مربع الطباعة، لكن حالة الطباعة ما اتحفظتش.')))}><Printer size={18}/>{t("طباعة / حفظ PDF")}</button></div>
   <article className="invoice-paper">
-   <header className="invoice-head"><div><div className="invoice-logo">{order.brand==='homey'?<HomeyLogo className="invoice-homey-logo"/>:<><ShoppingBag size={27}/><span>صدفة | SODFA</span></>}</div><p>فاتورة طلب شراء</p></div><div className="invoice-ref"><strong>#{order.id.slice(0,8).toUpperCase()}</strong><span>تاريخ الطلب: {new Date(order.createdAt).toLocaleDateString('en-GB')}</span></div></header>
-   <div className="invoice-banner">فاتورة شراء</div>
-   <section className="invoice-customer"><h2>بيانات العميل</h2><div className="invoice-details"><div><span>اسم العميل</span><strong>{order.customerName}</strong></div><div><span>رقم الهاتف</span><strong dir="ltr">{order.phone}</strong></div><div><span>عنوان التسليم</span><strong>{[order.governorate,order.city,order.address].filter(Boolean).join('، ')}</strong></div><div><span>رقم بديل</span><strong dir="ltr">{order.alternatePhone||'—'}</strong></div></div></section>
-   <section><h2>تفاصيل الطلب</h2><table className="invoice-table"><thead><tr><th>المنتج</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>{order.items.map((x,i)=><tr key={i}><td>{x.name}{x.sku&&<small>SKU: {x.sku}</small>}</td><td>{x.quantity}</td><td>{fmt(x.price)}</td><td>{fmt(x.price*x.quantity)}</td></tr>)}</tbody></table></section>
-   <section className="invoice-summary"><div><span>إجمالي المنتجات</span><strong>{fmt(subtotal)}</strong></div>{order.discount>0&&<div><span>الخصم</span><strong>-{fmt(order.discount)}</strong></div>}{order.shipping>0&&<div><span>الشحن</span><strong>{fmt(order.shipping)}</strong></div>}{manualAdjustment!==0&&<div><span>تعديل السعر الإجمالي</span><strong>{fmt(manualAdjustment)}</strong></div>}<div className="invoice-final"><span>إجمالي الفاتورة شامل الشحن</span><strong>{fmt(totalOf(order))}</strong></div>{order.prepaid>0&&<div><span>المدفوع مقدمًا</span><strong>{fmt(order.prepaid)}</strong></div>}{(order.prepaid>0||order.manualCollection!=null)&&<div><span>المتبقي للتحصيل</span><strong>{fmt(collectionFromCustomer(order))}</strong></div>}</section>
-   {order.notes&&<p className="invoice-notes"><b>ملاحظات:</b> {order.notes}</p>}
-   <footer>شكرًا لتعاملك معنا<small>الفاتورة صادرة من نظام إدارة الطلبات الداخلي.</small></footer>
+   <header className="invoice-head"><div><div className="invoice-logo">{order.brand==='homey'?<HomeyLogo className="invoice-homey-logo"/>:<><ShoppingBag size={27}/><span>{t("صدفة | SODFA")}</span></>}</div><p>{t("فاتورة طلب شراء")}</p></div><div className="invoice-ref"><strong>#{order.id.slice(0,8).toUpperCase()}</strong><span>{t("تاريخ الطلب:")} {new Date(order.createdAt).toLocaleDateString('en-GB')}</span></div></header>
+   <div className="invoice-banner">{t("فاتورة شراء")}</div>
+   <section className="invoice-customer"><h2>{t("بيانات العميل")}</h2><div className="invoice-details"><div><span>{t("اسم العميل")}</span><strong>{order.customerName}</strong></div><div><span>{t("رقم الهاتف")}</span><strong dir="ltr">{order.phone}</strong></div><div><span>{t("عنوان التسليم")}</span><strong>{[order.governorate,order.city,order.address].filter(Boolean).join('، ')}</strong></div><div><span>{t("رقم بديل")}</span><strong dir="ltr">{order.alternatePhone||'—'}</strong></div></div></section>
+   <section><h2>{t("تفاصيل الطلب")}</h2><table className="invoice-table"><thead><tr><th>{t("المنتج")}</th><th>{t("الكمية")}</th><th>{t("سعر الوحدة")}</th><th>{t("الإجمالي")}</th></tr></thead><tbody>{order.items.map((x,i)=><tr key={i}><td>{x.name}{x.sku&&<small>SKU: {x.sku}</small>}</td><td>{x.quantity}</td><td>{fmt(x.price)}</td><td>{fmt(x.price*x.quantity)}</td></tr>)}</tbody></table></section>
+   <section className="invoice-summary"><div><span>{t("إجمالي المنتجات")}</span><strong>{fmt(subtotal)}</strong></div>{order.discount>0&&<div><span>{t("الخصم")}</span><strong>-{fmt(order.discount)}</strong></div>}{order.shipping>0&&<div><span>{t("الشحن")}</span><strong>{fmt(order.shipping)}</strong></div>}{manualAdjustment!==0&&<div><span>{t("تعديل السعر الإجمالي")}</span><strong>{fmt(manualAdjustment)}</strong></div>}<div className="invoice-final"><span>{t("إجمالي الفاتورة شامل الشحن")}</span><strong>{fmt(totalOf(order))}</strong></div>{order.prepaid>0&&<div><span>{t("المدفوع مقدمًا")}</span><strong>{fmt(order.prepaid)}</strong></div>}{(order.prepaid>0||order.manualCollection!=null)&&<div><span>{t("المتبقي للتحصيل")}</span><strong>{fmt(collectionFromCustomer(order))}</strong></div>}</section>
+   {order.notes&&<p className="invoice-notes"><b>{t("ملاحظات:")}</b> {order.notes}</p>}
+   <footer>{t("شكرًا لتعاملك معنا")}<small>{t("الفاتورة صادرة من نظام إدارة الطلبات الداخلي.")}</small></footer>
   </article>
   <style jsx global>{`
    body:has(.invoice-page){background:#eef2e9;color:#24352a}.invoice-state{text-align:center;padding:90px}

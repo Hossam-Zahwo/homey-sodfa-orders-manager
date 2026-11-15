@@ -1,10 +1,13 @@
 'use client';
+import {useTranslation} from '@/app/language';
+
 import {printDocuments,printKeys} from '@/lib/print-history';
 import {useEffect,useState} from 'react';
 import type {Waybill} from '@/lib/types';
 import {WaybillPrintSheets} from '@/components/waybill-print-sheets';
 
 export default function BatchWaybillPrint(){
+ const t=useTranslation();
  const [waybills,setWaybills]=useState<Waybill[]>([]);
  const [perPage,setPerPage]=useState<3|4>(4);
  const [printDate,setPrintDate]=useState('');
@@ -31,37 +34,37 @@ export default function BatchWaybillPrint(){
   }
   void load();return()=>{active=false};
  },[]);
- if(loading)return <main className="shipping-print-state">جاري تجهيز البوالص للطباعة...</main>;
- if(error)return <main className="shipping-print-state">{error} <a href="/">الرجوع للوحة التحكم</a></main>;
- return <main className="shipping-print-view" dir="rtl">
+ if(loading)return <main className="shipping-print-state">{t("جاري تجهيز البوالص للطباعة...")}</main>;
+ if(error)return <main className="shipping-print-state">{t(error)} <a href="/">{t("الرجوع للوحة التحكم")}</a></main>;
+ return <main className="shipping-print-view">
    <div className="shipping-print-toolbar">
-    <a href="/">الرجوع لإدارة الطلبات</a>
+    <a href="/">{t("الرجوع لإدارة الطلبات")}</a>
     <div className="shipping-print-controls">
-     <span>عدد البوالص: {waybills.length}</span>
-     <label className="shipping-print-date-control">تاريخ الطباعة
-      <input type="date" value={printDate} onChange={e=>setPrintDate(e.target.value)} aria-label="تاريخ الطباعة على البوليصة"/>
+     <span>{t("عدد البوالص:")} {waybills.length}</span>
+     <label className="shipping-print-date-control">{t("تاريخ الطباعة")}
+      <input type="date" value={printDate} onChange={e=>setPrintDate(e.target.value)} aria-label={t("تاريخ الطباعة على البوليصة")}/>
      </label>
-     <button type="button" className="shipping-print-reset-dates" onClick={()=>setPerWaybillPrintDates({})}>توحيد تاريخ كل البوالص</button>
-     <label>عدد البوالص في ورقة A4
+     <button type="button" className="shipping-print-reset-dates" onClick={()=>setPerWaybillPrintDates({})}>{t("توحيد تاريخ كل البوالص")}</button>
+     <label>{t("عدد البوالص في ورقة A4")}
       <select value={perPage} onChange={e=>setPerPage(Number(e.target.value) as 3|4)}>
-       <option value={4}>4 بوالص / ورقة</option>
-       <option value={3}>3 بوالص / ورقة</option>
+       <option value={4}>{t("4 بوالص / ورقة")}</option>
+       <option value={3}>{t("3 بوالص / ورقة")}</option>
       </select>
      </label>
-     <button onClick={()=>void printDocuments(printKeys(waybills.map(w=>({...w,id:w.orderId})))).catch(()=>alert('اتفتح مربع الطباعة، لكن حالة الطباعة ما اتحفظتش.'))}>طباعة / حفظ PDF</button>
+     <button onClick={()=>void printDocuments(printKeys(waybills.map(w=>({...w,id:w.orderId})))).catch(()=>alert(t('اتفتح مربع الطباعة، لكن حالة الطباعة ما اتحفظتش.')))}>{t("طباعة / حفظ PDF")}</button>
     </div>
    </div>
-   <p className="shipping-print-help">تاريخ الطباعة مستقل عن تاريخ إنشاء الأوردر. غير التاريخ العام فوق، أو خصّص تاريخ بوليصة بعينها من الجدول ده. التعديلات هنا للطباعة فقط ولا تغيّر تاريخ الطلب المحفوظ.</p>
-   <section className="shipping-print-date-editor" aria-label="تعديل تاريخ طباعة كل بوليصة">
-    <h2>تواريخ طباعة البوالص</h2>
+   <p className="shipping-print-help">{t("تاريخ الطباعة مستقل عن تاريخ إنشاء الأوردر. غير التاريخ العام فوق، أو خصّص تاريخ بوليصة بعينها من الجدول ده. التعديلات هنا للطباعة فقط ولا تغيّر تاريخ الطلب المحفوظ.")}</p>
+   <section className="shipping-print-date-editor" aria-label={t("تعديل تاريخ طباعة كل بوليصة")}>
+    <h2>{t("تواريخ طباعة البوالص")}</h2>
     <div className="shipping-print-date-list">
      {waybills.map(w=><div className="shipping-print-date-row" key={w.id}>
       <div className="shipping-print-date-customer"><strong>{w.customerName}</strong><small dir="ltr">{w.phone}</small></div>
-      <label>تاريخ الطباعة
-       <input type="date" aria-label={'تاريخ طباعة بوليصة '+w.customerName} value={perWaybillPrintDates[w.id]??printDate}
+      <label>{t("تاريخ الطباعة")}
+       <input type="date" aria-label={t("تاريخ طباعة بوليصة ")+w.customerName} value={perWaybillPrintDates[w.id]??printDate}
         onChange={e=>setPerWaybillPrintDates(prev=>({...prev,[w.id]:e.target.value}))}/>
       </label>
-      <button type="button" disabled={perWaybillPrintDates[w.id]===undefined} onClick={()=>setPerWaybillPrintDates(prev=>{const next={...prev};delete next[w.id];return next})}>استخدم التاريخ العام</button>
+      <button type="button" disabled={perWaybillPrintDates[w.id]===undefined} onClick={()=>setPerWaybillPrintDates(prev=>{const next={...prev};delete next[w.id];return next})}>{t("استخدم التاريخ العام")}</button>
      </div>)}
     </div>
    </section>

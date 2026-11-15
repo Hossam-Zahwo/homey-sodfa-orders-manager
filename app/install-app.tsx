@@ -1,10 +1,13 @@
 'use client';
+import {useTranslation} from '@/app/language';
+
 
 import {useEffect,useState} from 'react';
 
 type InstallPrompt = Event & {prompt: () => Promise<unknown>};
 
 export function InstallApp() {
+ const t=useTranslation();
  const [prompt,setPrompt]=useState<InstallPrompt|null>(null);
  const [installed,setInstalled]=useState(true);
  const [showHelp,setShowHelp]=useState(false);
@@ -30,7 +33,7 @@ export function InstallApp() {
     try{await prompt.prompt()}catch{setShowHelp(true)}
     setPrompt(null);
    }else setShowHelp(!showHelp);
-  }}>تثبيت التطبيق</button>
-  {showHelp&&<p className="muted">على iPhone افتح الرابط في Safari، واضغط مشاركة ← إضافة إلى الشاشة الرئيسية، وفعّل «فتح كتطبيق ويب» لو ظهر. على Android افتح قائمة Chrome واختر «تثبيت التطبيق».</p>}
+  }}>{t("تثبيت التطبيق")}</button>
+  {showHelp&&<p className="muted">{t("على iPhone افتح الرابط في Safari، واضغط مشاركة ← إضافة إلى الشاشة الرئيسية، وفعّل «فتح كتطبيق ويب» لو ظهر. على Android افتح قائمة Chrome واختر «تثبيت التطبيق».")}</p>}
  </div>;
 }

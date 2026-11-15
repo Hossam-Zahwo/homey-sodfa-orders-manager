@@ -1,9 +1,10 @@
 'use client';
+import {useTranslation} from '@/app/language';
+
 import type {Waybill} from '@/lib/types';
 import {HomeyLogo} from '@/components/homey-logo';
 
 const latin=(value:string)=>String(value||'').replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-0x660)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-0x6f0));
-const currency=(value:number)=>new Intl.NumberFormat('en-US',{maximumFractionDigits:2,numberingSystem:'latn'}).format(Math.max(0,Number(value)||0))+' ج.م';
 
 // The chosen date is only part of the print preview. It does not change
 // the original order date or add a database field.
@@ -16,29 +17,32 @@ const formatPrintDate=(date:string)=>{
 };
 
 export function WaybillLabel({waybill:w,printDate}:{waybill:Waybill;printDate?:string}){
+ const t=useTranslation();
+ const currency=(value:number)=>new Intl.NumberFormat('en-US',{maximumFractionDigits:2,numberingSystem:'latn'}).format(Math.max(0,Number(value)||0))+' '+t('ج.م');
  const printedDate=printDate?formatPrintDate(printDate):'';
- return <article className="shipping-label" dir="rtl">
-   <header className={'shipping-label-header '+(w.brand==='homey'?'shipping-label-header-homey':'')}>{w.brand==='homey'?<HomeyLogo className="shipping-label-homey-logo"/>:<><strong>صدفة</strong><span>SODFA</span></>}</header>
-   {printedDate&&<div className="shipping-label-print-date"><span>تاريخ الإنشاء</span><strong dir="ltr">{printedDate}</strong></div>}
-   <div className="shipping-label-title">بيانات المستلم</div>
-   <div className="shipping-label-detail"><span>اسم العميل</span><strong>{w.customerName}</strong></div>
-   <div className="shipping-label-detail"><span>رقم الهاتف</span><strong className="shipping-label-phone" dir="ltr">{latin(w.phone)}</strong></div>
-   <div className="shipping-label-detail"><span>رقم بديل</span><strong className="shipping-label-phone" dir="ltr">{latin(w.alternatePhone||'—')}</strong></div>
+ return <article className="shipping-label">
+   <header className={'shipping-label-header '+(w.brand==='homey'?'shipping-label-header-homey':'')}>{w.brand==='homey'?<HomeyLogo className="shipping-label-homey-logo"/>:<><strong>{t("صدفة")}</strong><span>SODFA</span></>}</header>
+   {printedDate&&<div className="shipping-label-print-date"><span>{t("تاريخ الإنشاء")}</span><strong dir="ltr">{printedDate}</strong></div>}
+   <div className="shipping-label-title">{t("بيانات المستلم")}</div>
+   <div className="shipping-label-detail"><span>{t("اسم العميل")}</span><strong>{w.customerName}</strong></div>
+   <div className="shipping-label-detail"><span>{t("رقم الهاتف")}</span><strong className="shipping-label-phone" dir="ltr">{latin(w.phone)}</strong></div>
+   <div className="shipping-label-detail"><span>{t("رقم بديل")}</span><strong className="shipping-label-phone" dir="ltr">{latin(w.alternatePhone||'—')}</strong></div>
    <div className="shipping-label-dual">
-    <div className="shipping-label-detail"><span>المحافظة</span><strong>{w.governorate||'—'}</strong></div>
-    <div className="shipping-label-detail"><span>المدينة / المنطقة</span><strong>{w.city||'—'}</strong></div>
+    <div className="shipping-label-detail"><span>{t("المحافظة")}</span><strong>{w.governorate||'—'}</strong></div>
+    <div className="shipping-label-detail"><span>{t("المدينة / المنطقة")}</span><strong>{w.city||'—'}</strong></div>
    </div>
-   <div className="shipping-label-detail shipping-label-address"><span>العنوان بالتفصيل</span><strong>{w.address?.trim()||'—'}</strong></div>
-   {w.notes?.trim()&&<div className="shipping-label-note"><span>ملاحظات</span><strong>{w.notes.trim()}</strong></div>}
-   <div className="shipping-label-total"><span>المطلوب تحصيله</span><strong dir="ltr">{currency(w.collectionAmount)}</strong></div>
+   <div className="shipping-label-detail shipping-label-address"><span>{t("العنوان بالتفصيل")}</span><strong>{w.address?.trim()||'—'}</strong></div>
+   {w.notes?.trim()&&<div className="shipping-label-note"><span>{t("ملاحظات")}</span><strong>{w.notes.trim()}</strong></div>}
+   <div className="shipping-label-total"><span>{t("المطلوب تحصيله")}</span><strong dir="ltr">{currency(w.collectionAmount)}</strong></div>
  </article>;
 }
 
 export function WaybillPrintSheets({waybills,perPage,printDate,printDates}:{waybills:Waybill[];perPage:3|4;printDate?:string;printDates?:Record<string,string>}){
+ const t=useTranslation();
  const chunks:Waybill[][]=[];
  for(let i=0;i<waybills.length;i+=perPage)chunks.push(waybills.slice(i,i+perPage));
  return <div className={'shipping-sheets shipping-sheets-'+perPage}>
-  {chunks.map((group,idx)=><section className="shipping-sheet" key={idx} aria-label={'صفحة '+(idx+1)}>
+  {chunks.map((group,idx)=><section className="shipping-sheet" key={idx} aria-label={t("صفحة ")+(idx+1)}>
     {group.map(w=><WaybillLabel key={w.id} waybill={w} printDate={printDates?.[w.id]??printDate}/>)}
   </section>)}
  </div>;

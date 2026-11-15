@@ -1,10 +1,13 @@
 'use client';
+import {useTranslation} from '@/app/language';
+
 import {printDocuments,printKeys} from '@/lib/print-history';
 import {useEffect,useState} from 'react';
 import type {Waybill} from '@/lib/types';
 import {WaybillPrintSheets} from '@/components/waybill-print-sheets';
 
 export default function WaybillPrint({params}:{params:Promise<{id:string}>}){
+ const t=useTranslation();
  const [record,setRecord]=useState<Waybill|null>(null);
  const [error,setError]=useState('');
  const [loading,setLoading]=useState(true);
@@ -24,22 +27,22 @@ export default function WaybillPrint({params}:{params:Promise<{id:string}>}){
   });
   return()=>{active=false};
  },[params]);
- if(loading)return <main className="shipping-print-state">جاري تجهيز بوليصة الشحن...</main>;
- if(!record||error)return <main className="shipping-print-state">{error||'البوليصة غير موجودة'} <a href="/">الرجوع للوحة التحكم</a></main>;
- return <main className="shipping-print-view" dir="rtl">
+ if(loading)return <main className="shipping-print-state">{t("جاري تجهيز بوليصة الشحن...")}</main>;
+ if(!record||error)return <main className="shipping-print-state">{error||t("البوليصة غير موجودة")} <a href="/">{t("الرجوع للوحة التحكم")}</a></main>;
+ return <main className="shipping-print-view">
    <div className="shipping-print-toolbar">
-    <a href="/">الرجوع لإدارة الطلبات</a>
+    <a href="/">{t("الرجوع لإدارة الطلبات")}</a>
     <div className="shipping-print-controls">
-     <label className="shipping-print-date-control">تاريخ الطباعة
-      <input type="date" value={printDate} onChange={e=>setPrintDate(e.target.value)} aria-label="تاريخ الطباعة على البوليصة"/>
+     <label className="shipping-print-date-control">{t("تاريخ الطباعة")}
+      <input type="date" value={printDate} onChange={e=>setPrintDate(e.target.value)} aria-label={t("تاريخ الطباعة على البوليصة")}/>
      </label>
-     <label>عدد البوالص في ورقة A4
-      <select value={perPage} onChange={e=>setPerPage(Number(e.target.value) as 3|4)}><option value={4}>4 بوالص</option><option value={3}>3 بوالص</option></select>
+     <label>{t("عدد البوالص في ورقة A4")}
+      <select value={perPage} onChange={e=>setPerPage(Number(e.target.value) as 3|4)}><option value={4}>{t("4 بوالص")}</option><option value={3}>{t("3 بوالص")}</option></select>
      </label>
-     <button onClick={()=>void printDocuments(printKeys([{...record,id:record.orderId}])).catch(()=>alert('اتفتح مربع الطباعة، لكن حالة الطباعة ما اتحفظتش.'))}>طباعة / حفظ PDF</button>
+     <button onClick={()=>void printDocuments(printKeys([{...record,id:record.orderId}])).catch(()=>alert(t('اتفتح مربع الطباعة، لكن حالة الطباعة ما اتحفظتش.')))}>{t("طباعة / حفظ PDF")}</button>
     </div>
    </div>
-   <p className="shipping-print-help">دي معاينة ملصق الشحن المختصر. لو بتطبع بوليصة واحدة هتظهر في أول مكان من الورقة، وتقدر تجمع 3 أو 4 بوالص من صفحة «البوالص».</p>
+   <p className="shipping-print-help">{t("دي معاينة ملصق الشحن المختصر. لو بتطبع بوليصة واحدة هتظهر في أول مكان من الورقة، وتقدر تجمع 3 أو 4 بوالص من صفحة «البوالص».")}</p>
    <WaybillPrintSheets waybills={[record]} perPage={perPage} printDate={printDate}/>
  </main>;
 }
