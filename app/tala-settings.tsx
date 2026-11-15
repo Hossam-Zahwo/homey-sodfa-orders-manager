@@ -1,6 +1,7 @@
 'use client';
 
 import {useEffect, useState} from 'react';
+import {LockKeyhole,LockKeyholeOpen} from 'lucide-react';
 import {useLanguage} from './language';
 import {talaDocumentation, talaEndpoint, talaSupport, type TalaOperation, type TalaOption, type TalaTracking} from '@/lib/tala-connection';
 import type {Brand} from '@/lib/types';
@@ -128,8 +129,8 @@ export function TalaSettings({brand}: {brand: Brand}) {
    :configured===null?label('جاري فحص الإعدادات…','Checking configuration…')
    :configured?label('بيانات الحساب موجودة. اختبر الاتصال.','Credentials are configured. Test the connection.')
    :label('في انتظار بيانات حساب تالا لهذا المتجر. افتح التعديل لإضافتها.','Waiting for this store’s Tala account. Unlock editing to add it.')}</p>
-  <div className="toolbar">
-   <span role="status">{draft?label('التعديل مفتوح','Editing unlocked'):label('الإعدادات مقفولة','Settings locked')}</span>
+  <div className="toolbar tala-connection-actions">
+   <span className="status-pill neutral" role="status">{draft?<LockKeyholeOpen size={15}/>:<LockKeyhole size={15}/>} {draft?label('التعديل مفتوح','Editing unlocked'):label('الإعدادات مقفولة','Settings locked')}</span>
    {draft?<button type="button" className="btn secondary" disabled={busy} onClick={closeEditor}>{label('قفل الإعدادات','Lock settings')}</button>
     :<button type="button" className="btn secondary" disabled={!settings||busy} onClick={()=>{
      setDraft(settings);setAction('save');setSaved(false);

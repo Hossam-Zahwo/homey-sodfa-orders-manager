@@ -3,7 +3,7 @@ import {TalaSettings} from "./tala-settings";
 import {talaExpress} from "@/lib/tala-shipping";
 import {useTranslation} from '@/app/language';
 import {useState} from 'react';
-import {Download} from 'lucide-react';
+import {Download,Truck} from 'lucide-react';
 import {canPrepareShipment, shipmentCsv, shipmentDetails} from '@/lib/shipping-handoff';
 import type {Brand, Order} from '@/lib/types';
 
@@ -42,14 +42,14 @@ export function ShippingIntegrations({brand, companies, orders, initialCompany, 
  }
 
  return <>
-  <section className="panel">
-   <div className="sectionhead"><h2>{t("تجهيز شحنات")} {brand === 'homey' ? t("هومي") : t("صدفة")}</h2></div>
+  <section className="panel shipment-workspace">
+   <div className="sectionhead"><h2><Truck size={20}/>{t("تجهيز شحنات")} {brand === 'homey' ? t("هومي") : t("صدفة")}</h2></div>
    <div className="toolbar">
     <label>{t("شركة الشحن")} <select className="field" value={company} onChange={event => {setCompany(event.target.value); setIds([]); setIncludeContents(false)}}>
      <option value="">{t("اختار شركة الشحن")}</option>
      {companies.map(name => <option key={name} value={name}>{t(name)}</option>)}
     </select></label>
-    {company && <span className="muted">{t("التصدير اليدوي متاح · الربط الآلي بانتظار مواصفات الشركة")}</span>}
+    {company && <span className="muted">{t("تصدير الشحنات يدويًا")}</span>}
    </div>
    {company && (eligible.length ? <>
     <div className="tracking-table-scroll" tabIndex={0} role="region" aria-label={t("الطلبات المتاحة للتصدير")}>
@@ -62,7 +62,7 @@ export function ShippingIntegrations({brand, companies, orders, initialCompany, 
         <td dir="ltr">{order.id.slice(0, 8).toUpperCase()}</td>
         <td>{details.recipient_name}</td>
         <td>{[t(details.governorate), details.city].filter(Boolean).join('، ')}</td>
-        <td>{details.cash_on_delivery_egp}{t("ج.م")}</td>
+        <td>{details.cash_on_delivery_egp} {t("ج.م")}</td>
        </tr>;
       })}</tbody>
      </table>
@@ -75,8 +75,8 @@ export function ShippingIntegrations({brand, companies, orders, initialCompany, 
    </> : <p>{t("مفيش طلبات مفتوحة متعيّنة للشركة دي في المتجر الحالي.")}</p>)}
   </section>
   {company===talaExpress&&<TalaSettings key={brand} brand={brand}/>}
-  <section className="panel">
-   <h2>{t("طرق الربط المتاحة حسب الشركة")}</h2>
+  <details className="panel integration-help">
+   <summary>{t("طرق الربط المتاحة حسب الشركة")}</summary>
    <ul>{methods.map(([label, detail]) => <li key={label}><strong>{t(label)}</strong> — {t(detail)}</li>)}</ul>
    <h3>{t("اطلب إيه من")} {t(company || "شركة الشحن")}؟</h3>
    <ul>
@@ -85,6 +85,6 @@ export function ShippingIntegrations({brand, companies, orders, initialCompany, 
     <li>{t("طريقة استلام رقم التتبع والبوليصة وتحديثات الحالة والمرتجعات وكشوف التحصيل.")}</li>
     <li>{t("طريقة منع تكرار الشحنة باستخدام مرجع الطلب، وقالب الاستيراد والتصدير لو الربط بالملفات.")}</li>
    </ul>
-  </section>
+  </details>
  </>;
 }

@@ -1,4 +1,8 @@
 export const english: Readonly<Record<string, string>> = {
+  "العميل والعنوان": "Customer and address",
+  "بيانات التوصيل": "Delivery details",
+  "الشحن والتحصيل": "Shipping and collection",
+  "تصدير الشحنات يدويًا": "Manual shipment export",
   "كل الفترات": "All time",
   "اليوم": "Today",
   "فترة مخصصة": "Custom range",
