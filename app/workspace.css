@@ -185,3 +185,46 @@
  .order-city-fields .city-results { overscroll-behavior: contain; touch-action: pan-y; }
  .order-city-fields .city-results button { min-height: 44px; }
 }
+
+@media screen {
+ .app .tala-command-panel {
+  background: linear-gradient(140deg,#edf4e8 2%,#fcfdf9 49%,#edf2e5);
+  box-shadow: 0 10px 34px #293d2513;
+  border-color: #dce6d5;
+ }
+ .tala-panel-title,.tala-refresh-time,.tala-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+ }
+ .tala-panel-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #d1dfc9;
+  border-radius: 12px;
+  color: #375430;
+  background: #fff9;
+ }
+ .tala-panel-actions,.tala-shipments-toolbar { flex-wrap: wrap; }
+ .tala-command-panel .tracking-card {
+  background: #ffffffbc;
+  border-color: #dce7d7;
+  color: #283e27;
+  min-width: 0;
+ }
+ .tala-command-panel .tracking-card[aria-pressed="true"] { background: #e4efdf; outline: 2px solid var(--primary); outline-offset: -2px; }
+ .tala-shipments-toolbar { margin-block: 14px 9px; }
+ .tala-search { flex: 1 1 220px; }
+ .tala-search .field { width: 100%; }
+ .tala-shipments-table { min-width: 660px; }
+ .tala-shipments-table .status-pill { white-space: normal; }
+ .tala-shipment-detail { display: flex; flex-wrap: wrap; gap: 8px 30px; margin: 0; padding: 9px; background: #f2f6ee; }
+ .tala-shipment-detail dd { margin: 0; font-weight: 700; }
+ @media(max-width: 640px) {
+  .tala-command-panel .tracking-shipping { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .tala-panel-actions > * { flex: 1 1 auto; }
+ }
+}

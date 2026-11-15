@@ -1,6 +1,6 @@
 import {NextResponse} from 'next/server';
 import {requireAccess} from '@/lib/access';
-import {talaShipmentDateRange,type TalaOption,type TalaTracking} from '@/lib/tala-connection';
+import {talaShipmentDateRange,type TalaOption,type TalaTracking,type TalaShipmentSummary} from '@/lib/tala-connection';
 import {authenticate,getStaff} from '@/lib/staff-auth';
 import {allowedTalaEndpoint,readTalaSettings,writeTalaSettings,type TalaSettings} from '@/lib/tala-settings-store';
 import {graphql,login,TalaError,invalidateTalaToken} from '@/lib/tala-api';
@@ -12,7 +12,7 @@ const queries = {
  services: 'query Services { listShippingServicesDropdown(input: { active: true }) { id name } }',
  zones: 'query Zones($id: Int!) { listZonesDropdown(input: { active: true, service: { serviceId: $id } }) { id name } }',
  subzones: 'query Subzones($id: Int!) { listZonesDropdown(input: { active: true, parentId: $id }) { id name } }',
- shipments: 'query Shipments($input: ListShipmentsFilterInput, $page: Int) { listShipments(input: $input, first: 100, page: $page) { paginatorInfo { hasMorePages } data { code refNumber status { code name } } } }',
+ shipments: 'query Shipments($input: ListShipmentsFilterInput, $page: Int) { listShipments(input: $input, first: 100, page: $page) { paginatorInfo { hasMorePages } data { code refNumber date status { code name } recipientZone { name } recipientSubzone { name } service { name } price deliveryFees deliveredAmount } } }',
  tracking: 'query Track($code: String) { shipment(code: $code) { code refNumber status { code name } } }',
 };
 function publicSettings(settings:TalaSettings){
@@ -101,10 +101,11 @@ export async function POST(request: Request) {
  if(operation==='shipments'&&(typeof page!=='number'||!Number.isSafeInteger(page)||page<1||page>50)){
   return NextResponse.json({error:'invalid'},{status:400});
  }
- const variables=operation==='shipments'?{page,input:{date:talaShipmentDateRange(new Date())}}
+ const days=body.days===7||body.days===90?body.days:30;
+ const variables=operation==='shipments'?{page,input:{date:talaShipmentDateRange(new Date(),days)}}
   :operation==='services'?{}:operation==='tracking'?{code}:{id};
  type Data = {listShippingServicesDropdown?:TalaOption[];listZonesDropdown?:TalaOption[];shipment?:TalaTracking|null;
-  listShipments?:{paginatorInfo:{hasMorePages:boolean};data:TalaTracking[]}};
+  listShipments?:{paginatorInfo:{hasMorePages:boolean};data:TalaShipmentSummary[]}};
  try {
   const {input,endpoint,revision}=await readTalaSettings(brand as Brand);
   if(!input)return NextResponse.json({error:'missing_credentials'},{status:409});

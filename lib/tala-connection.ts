@@ -22,13 +22,22 @@ export const talaStatusGroups = [
  ['DEX', 'تعذر التسليم', 'Delivery failed'],
 ] as const;
 
-export type TalaShipmentPage = {shipments:TalaTracking[];hasMore:boolean};
+export type TalaShipmentSummary = TalaTracking & {
+ date?:string;
+ recipientZone?:{name:string}|null;
+ recipientSubzone?:{name:string}|null;
+ service?:{name:string}|null;
+ price?:number;
+ deliveryFees?:number;
+ deliveredAmount?:number;
+};
+export type TalaShipmentPage = {shipments:TalaShipmentSummary[];hasMore:boolean};
 
 const cairoDate = new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Cairo',year:'numeric',month:'2-digit',day:'2-digit'});
 
-export function talaShipmentDateRange(now:Date){
+export function talaShipmentDateRange(now:Date,days=30){
  const today=cairoDate.format(now);
  const first=new Date(today+'T00:00:00Z');
- first.setUTCDate(first.getUTCDate()-29);
+ first.setUTCDate(first.getUTCDate()-days+1);
  return {fromDate:first.toISOString().slice(0,10),toDate:today};
 }
