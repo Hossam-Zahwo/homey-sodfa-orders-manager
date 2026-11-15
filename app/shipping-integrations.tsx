@@ -21,9 +21,10 @@ type Props = {
  orders: Order[];
  initialCompany: string;
  initialIds: string[];
+ openOrder:(id:string)=>void;
 };
 
-export function ShippingIntegrations({brand, companies, orders, initialCompany, initialIds}: Props) {
+export function ShippingIntegrations({brand, companies, orders, initialCompany, initialIds, openOrder}: Props) {
  const t=useTranslation();
  const [company, setCompany] = useState(initialCompany);
  const [ids, setIds] = useState(initialIds);
@@ -74,7 +75,7 @@ export function ShippingIntegrations({brand, companies, orders, initialCompany, 
     <p className="muted">{t("الملف فيه مرجع الطلب وبيانات التوصيل ومبلغ التحصيل من العميل. تنزيل الملف خطوة تجهيز قبل رفعه لدى الشركة.")}</p>
    </> : <p>{t("مفيش طلبات مفتوحة متعيّنة للشركة دي في المتجر الحالي.")}</p>)}
   </section>
-  {company===talaExpress&&<TalaSettings key={brand} brand={brand}/>}
+  {company===talaExpress&&<TalaSettings key={brand} brand={brand} orderIds={new Set(orders.filter(order=>order.shippingCompany===talaExpress).map(order=>order.id))} openOrder={openOrder}/>}
   <details className="panel integration-help">
    <summary>{t("طرق الربط المتاحة حسب الشركة")}</summary>
    <ul>{methods.map(([label, detail]) => <li key={label}><strong>{t(label)}</strong> — {t(detail)}</li>)}</ul>

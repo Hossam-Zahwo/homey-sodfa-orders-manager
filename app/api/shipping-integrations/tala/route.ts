@@ -1,6 +1,6 @@
 import {NextResponse} from 'next/server';
 import {requireAccess} from '@/lib/access';
-import {type TalaOption,type TalaTracking} from '@/lib/tala-connection';
+import {talaShipmentDateRange,type TalaOption,type TalaTracking} from '@/lib/tala-connection';
 import {authenticate,getStaff} from '@/lib/staff-auth';
 import {allowedTalaEndpoint,readTalaSettings,writeTalaSettings,type TalaSettings} from '@/lib/tala-settings-store';
 import type {Brand} from '@/lib/types';
@@ -12,6 +12,7 @@ const queries = {
  services: 'query Services { listShippingServicesDropdown(input: { active: true }) { id name } }',
  zones: 'query Zones($id: Int!) { listZonesDropdown(input: { active: true, service: { serviceId: $id } }) { id name } }',
  subzones: 'query Subzones($id: Int!) { listZonesDropdown(input: { active: true, parentId: $id }) { id name } }',
+ shipments: 'query Shipments($input: ListShipmentsFilterInput, $page: Int) { listShipments(input: $input, first: 100, page: $page) { paginatorInfo { hasMorePages } data { code refNumber status { code name } } } }',
  tracking: 'query Track($code: String) { shipment(code: $code) { code refNumber status { code name } } }',
 };
 const tokens = new Map<string,{token:string; expiresAt:number}>();
@@ -132,15 +133,21 @@ export async function POST(request: Request) {
  const id=body.id;
  const code=typeof body.code==='string'?body.code.trim():'';
  const language=body.language==='en'?'en':'ar';
- if (operation!=='services' && operation!=='zones' && operation!=='subzones' && operation!=='tracking') {
+ if (operation!=='services' && operation!=='zones' && operation!=='subzones' && operation!=='tracking' && operation!=='shipments') {
   return NextResponse.json({error:'invalid'},{status:400});
  }
  if ((operation==='zones'||operation==='subzones') && (!Number.isSafeInteger(id)||id<1||id>2147483647)) {
   return NextResponse.json({error:'invalid'},{status:400});
  }
  if (operation==='tracking' && (!code||code.length>100)) return NextResponse.json({error:'invalid'},{status:400});
- const variables=operation==='services'?{}:operation==='tracking'?{code}:{id};
- type Data = {listShippingServicesDropdown?:TalaOption[];listZonesDropdown?:TalaOption[];shipment?:TalaTracking|null};
+ const page:unknown=body.page;
+ if(operation==='shipments'&&(typeof page!=='number'||!Number.isSafeInteger(page)||page<1||page>50)){
+  return NextResponse.json({error:'invalid'},{status:400});
+ }
+ const variables=operation==='shipments'?{page,input:{date:talaShipmentDateRange(new Date())}}
+  :operation==='services'?{}:operation==='tracking'?{code}:{id};
+ type Data = {listShippingServicesDropdown?:TalaOption[];listZonesDropdown?:TalaOption[];shipment?:TalaTracking|null;
+  listShipments?:{paginatorInfo:{hasMorePages:boolean};data:TalaTracking[]}};
  try {
   const {input,endpoint,revision}=await readTalaSettings(brand as Brand);
   if(!input)return NextResponse.json({error:'missing_credentials'},{status:409});
@@ -154,6 +161,11 @@ export async function POST(request: Request) {
    if (tokens.get(cacheKey)?.token===token) tokens.delete(cacheKey);
    token=await login(cacheKey,endpoint,input);
    data=await graphql<Data>(endpoint,queries[operation],variables,language,token);
+  }
+  if(operation==='shipments'){
+   const result=data.listShipments;
+   if(!result||typeof result.paginatorInfo?.hasMorePages!=='boolean'||!Array.isArray(result.data))throw new TalaError('rejected');
+   return NextResponse.json({data:{shipments:result.data,hasMore:result.paginatorInfo.hasMorePages}},{headers:{'Cache-Control':'no-store'}});
   }
   return NextResponse.json({data:operation==='tracking'?data.shipment??null:data.listShippingServicesDropdown??data.listZonesDropdown??[]});
  } catch (error) {

@@ -3,6 +3,7 @@
 import {useEffect, useState} from 'react';
 import {LockKeyhole,LockKeyholeOpen} from 'lucide-react';
 import {useLanguage} from './language';
+import {TalaShipments} from './tala-shipments';
 import {talaDocumentation, talaEndpoint, talaSupport, type TalaOperation, type TalaOption, type TalaTracking} from '@/lib/tala-connection';
 import type {Brand} from '@/lib/types';
 
@@ -15,7 +16,7 @@ type ConnectionSettings = {
  revision:number;
 };
 
-export function TalaSettings({brand}: {brand: Brand}) {
+export function TalaSettings({brand,orderIds,openOrder}: {brand: Brand;orderIds:ReadonlySet<string>;openOrder:(id:string)=>void}) {
  const {language}=useLanguage();
  const label=(ar:string,en:string)=>language==='en'?en:ar;
  const [settings,setSettings]=useState<ConnectionSettings|null>(null);
@@ -201,7 +202,8 @@ export function TalaSettings({brand}: {brand: Brand}) {
    {tracking===null&&<p role="status">{label('الشحنة مش موجودة في الحساب.','Shipment not found in this account.')}</p>}
    {tracking&&<p role="status"><b dir="ltr">{tracking.code}</b> · {tracking.status?.name??'—'} {tracking.refNumber&&<>· <bdi>{tracking.refNumber}</bdi></>}</p>}
   </>}
-  <p className="muted">{label('اختبار الاتصال والاستعلام لا ينشئان شحنات. إرسال الطلبات وتحديثاتها آليًا يحتاج تفعيل منفصل.',
-   'Connection tests and lookups do not create shipments. Automatic dispatch and updates require separate activation.')}</p>
+  {settings?.configured&&!draft&&<TalaShipments key={brand+':'+settings.revision} brand={brand} revision={settings.revision} orderIds={orderIds} openOrder={openOrder}/>}
+  <p className="muted">{label('اختبار الاتصال والاستعلام لا ينشئان شحنات. إرسال الطلبات وتعديل حالات الأوردرات في هومي يحتاج تفعيل منفصل.',
+   'Connection tests and lookups do not create shipments. Dispatch and updates to Homey order records require separate activation.')}</p>
  </section>;
 }
