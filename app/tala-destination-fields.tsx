@@ -96,7 +96,7 @@ export function TalaDestinationFields({governorate,city,retryOrder=false,price,o
      const value=event.target.value;
      setZone(value);setSubzone('');setSubzones([]);setFee(null);
      const selected=zones.find(item=>String(item.id)===value);
-     if(selected)void Promise.resolve(zoneSelectedRef.current?.(selected.name)).catch(()=>setZone(''));
+     if(selected)void Promise.resolve().then(()=>zoneSelectedRef.current?.(selected.name)).catch(()=>setZone(''));
     }}><option value="">{label('اختار المحافظة','Select a governorate')}</option>
      {zones.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
     </select></label>
