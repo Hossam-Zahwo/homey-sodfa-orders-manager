@@ -41,6 +41,33 @@ export default function Page(){
  const [orderLocations,setOrderLocations]=useState<Record<string,string[]>>({});
  const [talaLive,setTalaLive]=useState<TalaShipmentSummary[]>([]);
  const [talaLiveComplete,setTalaLiveComplete]=useState(false);
+ useEffect(()=>{
+  if(!auth||brand!=='homey'){setTalaLive([]);setTalaLiveComplete(false);return}
+  let cancelled=false;
+  async function syncTala(){
+   try{
+    const found=new Map<string,TalaShipmentSummary>();
+    let hasMore=true;
+    for(let page=1;page<=50&&hasMore;page++){
+     const response=await fetch('/api/shipping-integrations/tala',{
+      method:'POST',credentials:'same-origin',cache:'no-store',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({brand:'homey',operation:'shipments',page,days:90}),
+     });
+     if(!response.ok)throw new Error('Tala unavailable');
+     const json=await response.json();
+     hasMore=json.data?.hasMore===true;
+     for(const shipment of json.data?.shipments??[]){
+      if(shipment.code)found.set(shipment.code,shipment);
+     }
+    }
+    if(!cancelled){setTalaLive([...found.values()]);setTalaLiveComplete(!hasMore)}
+   }catch{if(!cancelled)setTalaLiveComplete(false)}
+  }
+  void syncTala();
+  const timer=window.setInterval(()=>{if(!document.hidden)void syncTala()},180000);
+  return()=>{cancelled=true;window.clearInterval(timer)};
+ },[auth,brand]);
  const [orderLocationError,setOrderLocationError]=useState('');
  const [bulkLocation,setBulkLocation]=useState({governorate:'',city:''});
  async function loadOrderLocations(){
