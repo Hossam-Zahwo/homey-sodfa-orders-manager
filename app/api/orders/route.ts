@@ -1,6 +1,6 @@
 import {NextResponse} from 'next/server';
 import {requireAccess} from '@/lib/access';
-import {getOrders,saveOrder,removeOrder,audit} from '@/lib/database';
+import {getOrders,saveOrder,removeOrder,audit,addOrderLocality} from '@/lib/database';
 import {statuses,type Order} from '@/lib/types';
 import {talaExpress} from '@/lib/tala-shipping';
 import {dispatchTalaOrder,parseTalaDestination,prepareTalaDispatch} from '@/lib/tala-dispatch';
@@ -47,11 +47,12 @@ export async function POST(r:Request){
   let dispatch;
   if((!o.id||retry)&&o.brand==='homey'&&o.shippingCompany===talaExpress&&!closedWithoutDelivery(o)&&o.status!=='delivered'){
    const destination=parseTalaDestination(o.talaDestination);
-   if(!destination||typeof o.address!=='string'||!o.address.trim())return NextResponse.json({error:'اختار خدمة تالا والمنطقة وكمّل بيانات الطرد.'},{status:400});
+   if(!destination||typeof o.address!=='string'||!o.address.trim()||typeof o.city!=='string'||o.city.trim().length<2)return NextResponse.json({error:'اختار منطقة تالا واكتب العنوان بالتفصيل.'},{status:400});
    try{dispatch=await prepareTalaDispatch(destination)}
    catch{return NextResponse.json({error:'تعذّر تجهيز الإرسال لتالا. راجع الاتصال والخدمة والمنطقة.'},{status:503})}
   }
-  const saved=await saveOrder({...o,customerName:o.customerName.trim(),phone:normalizePhone(o.phone)},creationRequestId);
+  if(dispatch&&!await addOrderLocality(o.governorate,o.city.trim()))return NextResponse.json({error:'راجع المحافظة والمنطقة المختارتين لتالا.'},{status:400});
+  const saved=await saveOrder({...o,city:o.city.trim(),customerName:o.customerName.trim(),phone:normalizePhone(o.phone)},creationRequestId);
   await audit(o.id?'update':'create','order',saved.id,saved.brand,JSON.stringify({status:saved.status,shippingCompany:saved.shippingCompany,carrierReceived:saved.carrierReceived})).catch(console.error);
   const tala=dispatch&&saved.shippingCompany===talaExpress&&!closedWithoutDelivery(saved)&&saved.status!=='delivered'?await dispatchTalaOrder(saved,dispatch,retry):undefined;
   return NextResponse.json({data:saved,tala});
