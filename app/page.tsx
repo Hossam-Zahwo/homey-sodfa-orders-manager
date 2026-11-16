@@ -505,7 +505,7 @@ export default function Page(){
          setOrderLocations(current=>({...current,[governorate]:[...new Set([...(current[governorate]??[]),city])].sort((a,b)=>a.localeCompare(b,'ar'))}));
         }
         setEditing(order=>order?{...order,city}:order);
-       }catch{setErr('تعذّر حفظ منطقة تالا ضمن بيانات العنوان. راجع المحافظة وحاول تاني.')}
+       }catch{setErr('تعذّر حفظ منطقة تالا ضمن بيانات العنوان. راجع المحافظة وحاول تاني.');throw new Error('TALA_LOCALITY_SAVE_FAILED')}
       }}/>}
 
     </div>
