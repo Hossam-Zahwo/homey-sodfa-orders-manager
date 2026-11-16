@@ -353,7 +353,9 @@ export default function Page(){
   if(editing.shippingCompany===talaExpress&&talaRate(talaExpress,editing.governorate,editing.city)===undefined&&editing.shipping<=0){
    setErr('اكتب تكلفة شحن تالا للمنطقة دي قبل الحفظ.');return;
   }
-  setBusy(true);setErr('');try{const {tala}=await api('orders','POST',{...editing,retryTala,talaDestination:{
+  const talaAreaName=fields.get('talaAreaName');
+  const orderPayload={...editing,...(typeof talaAreaName==='string'&&talaAreaName?{city:talaAreaName}:{})};
+  setBusy(true);setErr('');try{const {tala}=await api('orders','POST',{...orderPayload,retryTala,talaDestination:{
    serviceId:Number(fields.get('talaService')),zoneId:Number(fields.get('talaZone')),subzoneId:Number(fields.get('talaSubzone')),
    weight:Number(fields.get('talaWeight')),piecesCount:Number(fields.get('talaPieces')),typeCode:fields.get('talaType'),openableCode:fields.get('talaOpenable'),
   }});setEditing(null);setNotice(tala?.state==='sent'?t('تم إرسال الشحنة لتالا. رقم التتبع')+' '+tala.trackingCode
