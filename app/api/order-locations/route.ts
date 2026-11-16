@@ -1,6 +1,7 @@
 import {NextResponse} from 'next/server';
 import {requireAccess} from '@/lib/access';
 import {addOrderLocality,getOrderLocations} from '@/lib/database';
+import {govs} from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,7 +10,9 @@ export async function GET(request: Request) {
  const blocked = await requireAccess(request);
  if (blocked) return blocked;
  try {
-  return NextResponse.json({data: await getOrderLocations()});
+  const data=await getOrderLocations();
+  for(const governorate of govs)if(!Object.hasOwn(data,governorate))data[governorate]=[];
+  return NextResponse.json({data});
  } catch {
   return NextResponse.json({error: 'تعذر تحميل المحافظات والمدن. حاول تاني.'}, {status: 503});
  }
