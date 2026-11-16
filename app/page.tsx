@@ -469,14 +469,52 @@ export default function Page(){
     <button type="button" className="btn secondary tiny" onClick={()=>setEditing(null)}>{t("إغلاق ×")}</button>
    </div>
    <form onSubmit={saveOrder}>
+    <section className="order-form-section order-carrier-choice">
+     <h3 className="editor-section-title"><Truck size={18}/>{t('طريقة التوصيل')}</h3>
+     <label>{t("شركة الشحن")}
+      <select className="field" required={!editing.id} value={editing.shippingCompany?'company:'+editing.shippingCompany:editing.id||deliveryChosen?'self':''} onChange={e=>{
+       const value=e.target.value;setDeliveryChosen(true);
+       changeShippingLocation({shippingCompany:value==='self'?'':value.slice('company:'.length)});
+      }}>
+       <option value="" disabled>{t("اختار شركة الشحن أولاً")}</option>
+       {registeredCompanies.map(name=><option key={name} value={'company:'+name}>{t(name)}</option>)}
+       {editing.shippingCompany&&!registeredCompanies.includes(editing.shippingCompany)&&<option value={'company:'+editing.shippingCompany}>{t(editing.shippingCompany)}</option>}
+       <option value="self">{t("توصيل بنفسي")}</option>
+      </select>
+     </label>
+    </section>
+    {(editing.id||deliveryChosen)&&<>
     <section className="order-form-section">
     <h3 className="editor-section-title"><Users size={18}/>{t('العميل والعنوان')}</h3>
     <div className="formgrid order-basics">
      {inputOrder('customerName',t("اسم العميل"),true)}
      {inputOrder('phone',t("رقم التليفون"),true)}
-     <OrderLocationFields locations={orderLocations} governorate={editing.governorate} city={editing.city} required={!editing.id}
-      onAreaAdded={(governorate,city)=>setOrderLocations(locations=>({...locations,[governorate]:[...new Set([...(locations[governorate]??[]),city])].sort((a,b)=>a.localeCompare(b,'ar'))}))}
-      onChange={(governorate,city)=>changeShippingLocation({governorate,city})}/>
+     {editing.shippingCompany===talaExpress&&(!editing.id||canRetryTala||(!closedWithoutDelivery(editing)&&editing.status!=='delivered'))?
+      <TalaDestinationFields governorate={editing.governorate} city={editing.city} retryOrder={canRetryTala}
+       price={Math.max(0,totalOf(editing)-editing.shipping-editing.prepaid)}
+       onRateChange={rate=>setEditing(order=>order?{...order,shipping:rate}:order)}
+       onZoneSelected={zone=>{
+        const governorate=Object.keys(orderLocations).find(name=>comparableLocation(name)===comparableLocation(zone));
+        if(!governorate){setErr('المحافظة اللي رجعتها تالا مش موجودة ضمن المحافظات المحفوظة.');throw new Error('TALA_GOVERNORATE_NOT_FOUND')}
+        setEditing(order=>order?{...order,governorate,city:''}:order);
+       }}
+       onAreaSelected={async area=>{
+        const governorate=editing.governorate;
+        if(!governorate)return;
+        const existing=orderLocations[governorate]?.find(name=>comparableLocation(name)===comparableLocation(area));
+        const city=existing||area;
+        try{
+         if(!existing){
+          await api('order-locations','POST',{governorate,city});
+          setOrderLocations(current=>({...current,[governorate]:[...new Set([...(current[governorate]??[]),city])].sort((a,b)=>a.localeCompare(b,'ar'))}));
+         }
+         setEditing(order=>order?{...order,city}:order);
+        }catch{setErr('تعذّر حفظ منطقة تالا ضمن بيانات العنوان. راجع المحافظة وحاول تاني.');throw new Error('TALA_LOCALITY_SAVE_FAILED')}
+       }}/>:
+      <OrderLocationFields locations={orderLocations} governorate={editing.governorate} city={editing.city} required={!editing.id}
+       onAreaAdded={(governorate,city)=>setOrderLocations(locations=>({...locations,[governorate]:[...new Set([...(locations[governorate]??[]),city])].sort((a,b)=>a.localeCompare(b,'ar'))}))}
+       onChange={(governorate,city)=>changeShippingLocation({governorate,city})}/>}
+
      {orderLocationError&&<div className="full notice error" role="alert">{orderLocationError} <button type="button" className="btn secondary tiny" onClick={loadOrderLocations}>{t("إعادة المحاولة")}</button></div>}
      <label className="full">{t("العنوان بالتفصيل")}
       <input className="field" required={!editing.id} value={editing.address} onChange={e=>setEditing({...editing,address:e.target.value})}/>
@@ -484,32 +522,9 @@ export default function Page(){
     </div>
     </section>
     <section className="order-form-section">
-    <h3 className="editor-section-title"><Truck size={18}/>{t('بيانات التوصيل')}</h3>
+    <h3 className="editor-section-title"><Truck size={18}/>{t('بيانات الشحن')}</h3>
     <div className="formgrid order-basics">
-     <label>{t("شركة الشحن")}
-      <select className="field" required={!editing.id} value={editing.shippingCompany?'company:'+editing.shippingCompany:editing.id||editing.shippingCompany===''?'self':''} onChange={e=>changeShippingLocation({shippingCompany:e.target.value==='self'?'':e.target.value.slice('company:'.length)})}>
-       <option value="" disabled>{t("اختار طريقة التوصيل")}</option>
-       {registeredCompanies.map(name=><option key={name} value={'company:'+name}>{t(name)}</option>)}
-       {editing.shippingCompany&&!registeredCompanies.includes(editing.shippingCompany)&&<option value={'company:'+editing.shippingCompany}>{t(editing.shippingCompany)}</option>}
-       <option value="self">{t("توصيل بنفسي")}</option>
-      </select>
-     </label>
      {numOrder('shipping',t("تكلفة الشحن"))}
-     {(!editing.id||canRetryTala)&&editing.brand==='homey'&&editing.shippingCompany===talaExpress&&!closedWithoutDelivery(editing)&&editing.status!=='delivered'&&
-      <TalaDestinationFields key={editing.governorate} governorate={editing.governorate} city={editing.city} retryOrder={canRetryTala} price={Math.max(0,totalOf(editing)-editing.shipping-editing.prepaid)} onRateChange={rate=>setEditing(order=>order?{...order,shipping:rate}:order)} onAreaSelected={async area=>{
-       const governorate=editing.governorate;
-       if(!governorate)return;
-       const existing=orderLocations[governorate]?.find(name=>comparableLocation(name)===comparableLocation(area));
-       const city=existing||area;
-       try{
-        if(!existing){
-         await api('order-locations','POST',{governorate,city});
-         setOrderLocations(current=>({...current,[governorate]:[...new Set([...(current[governorate]??[]),city])].sort((a,b)=>a.localeCompare(b,'ar'))}));
-        }
-        setEditing(order=>order?{...order,city}:order);
-       }catch{setErr('تعذّر حفظ منطقة تالا ضمن بيانات العنوان. راجع المحافظة وحاول تاني.');throw new Error('TALA_LOCALITY_SAVE_FAILED')}
-      }}/>}
-
     </div>
     </section>
     <section className="order-form-section">
@@ -567,8 +582,10 @@ export default function Page(){
     <div className="modalfooter">
      <button type="button" className="btn secondary" onClick={()=>setEditing(null)}>{t("إلغاء")}</button>
      {canRetryTala&&<button type="submit" className="btn" value="retry-tala" disabled={busy}><Truck size={17}/>{t('حفظ وإعادة الإرسال لتالا')}</button>}
-     <button type="submit" formNoValidate={canRetryTala} className={canRetryTala?'btn secondary':'btn'} disabled={busy||(!editing.id&&!Object.keys(orderLocations).length)}><ShieldCheck size={17}/>{t("حفظ الطلب")}</button>
+     <button type="submit" formNoValidate={canRetryTala} className={canRetryTala?'btn secondary':'btn'} disabled={busy||(!editing.id&&!deliveryChosen)}><ShieldCheck size={17}/>{t("حفظ الطلب")}</button>
     </div>
+    </>}
+    {!editing.id&&!deliveryChosen&&<p className="notice order-carrier-hint" role="status">{t("اختار شركة الشحن أو التوصيل الذاتي علشان تظهر خانات الطلب.")}</p>}
    </form>
   </section>
  </div>}
