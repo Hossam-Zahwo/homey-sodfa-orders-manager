@@ -95,5 +95,13 @@ CREATE TABLE IF NOT EXISTS public.tala_order_shipments (
  state text NOT NULL CHECK (state IN ('sending','sent','review')),
  tracking_code text,
  external_id bigint,
+ provider_status_code text,
+ provider_status_name text,
+ provider_delivered_amount numeric(14,2),
+ provider_delivery_fees numeric(14,2),
+ provider_customer_due numeric(14,2),
+ provider_collected_amount numeric(14,2),
+ provider_pending_collection_amount numeric(14,2),
+ provider_collected_fees numeric(14,2),
  updated_at timestamptz NOT NULL DEFAULT now()
 );
