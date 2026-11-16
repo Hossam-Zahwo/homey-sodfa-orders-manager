@@ -25,6 +25,7 @@ type Tab='dashboard'|'orders'|'carriers'|'shipping-integrations'|'customers'|'re
 const newOrder=(brand:Brand):Order=>({id:'',creationRequestId:crypto.randomUUID(),brand,createdAt:new Date().toLocaleDateString('en-CA'),updatedAt:'',version:0,customerName:'',phone:'',alternatePhone:'',governorate:'',city:'',address:'',source:'',paymentMethod:'الدفع عند الاستلام',prepaid:0,shipping:0,discount:0,items:[{name:'',sku:'',quantity:1,price:0}],status:'new',notes:'',assignedTo:'',deletedAt:''});
 const newCustomer=(brand:Brand):Customer=>({id:'',brand,name:'',phone:'',alternatePhone:'',governorate:'',city:'',address:'',notes:'',createdAt:'',updatedAt:'',deletedAt:''});
 const englishDigits=(value:string|number)=>String(value??'').replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-0x660)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-0x6f0));
+const comparableLocation=(value:string)=>value.normalize('NFKD').replace(/[\p{M}ـ]/gu,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').trim().replace(/\s+/g,' ');
 const number=(n:number)=>new Intl.NumberFormat('en-US',{maximumFractionDigits:2,numberingSystem:'latn'}).format(n);
 const dateEN=(date:string)=>{const d=new Date(date);return Number.isNaN(d.getTime())?'—':d.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric',numberingSystem:'latn'})};
 const enteredDate=new Intl.DateTimeFormat('en-GB',{dateStyle:'short',timeStyle:'short',timeZone:'Africa/Cairo',numberingSystem:'latn'});
@@ -37,6 +38,7 @@ export default function Page(){
  const t=useTranslation();
  const money=(n:number)=>number(n)+' '+t('ج.م');
  const [auth,setAuth]=useState<boolean|null>(null),[email,setEmail]=useState(''),[brand,setBrand]=useState<Brand>('homey'),[tab,setTab]=useState<Tab>('dashboard'),[orders,setOrders]=useState<Order[]>([]),[customers,setCustomers]=useState<Customer[]>([]),[waybills,setWaybills]=useState<Waybill[]>([]),[search,setSearch]=useState(''),[filter,setFilter]=useState('all'),[editing,setEditing]=useState<Order|null>(null),[editCustomer,setEditCustomer]=useState<Customer|null>(null),[busy,setBusy]=useState(false),[err,setErr]=useState(''),[notice,setNotice]=useState(''),[loaded,setLoaded]=useState(false);
+ const [deliveryChosen,setDeliveryChosen]=useState(false);
  const [orderLocations,setOrderLocations]=useState<Record<string,string[]>>({});
  const [orderLocationError,setOrderLocationError]=useState('');
  const [bulkLocation,setBulkLocation]=useState({governorate:'',city:''});
@@ -82,6 +84,25 @@ export default function Page(){
  useEffect(()=>{if(!auth||brand!=='homey')return;let active=true;fetch('/api/catalog',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(x=>{if(active){setCatalog(Array.isArray(x.data)?x.data:[]);setCatalogNotice(x.warning||'')}}).catch(()=>{if(active)setCatalogNotice('المنتجات غير متاحة دلوقتي؛ تقدر تضيفها يدويًا')});return()=>{active=false}},[auth,brand]);
  async function reload(){setBusy(true);setErr('');try{const [a,b,c]=await Promise.all([api('orders'),api('customers'),api('waybills')]);setOrders(a.data);setCustomers(b.data);setWaybills(c.data);setLoaded(true)}catch(e){setErr((e as Error).message)}finally{setBusy(false)}}
  useEffect(()=>{if(auth)void reload()},[auth]);
+ useEffect(()=>{
+  if(!auth||brand!=='homey')return;
+  let active=true,running=false;
+  const sync=async()=>{
+   if(running)return;
+   running=true;
+   try{
+    const result=await api('shipping-integrations/tala','POST',{brand:'homey',operation:'sync-orders'});
+    if(active&&(result.data?.updated??0)>0){
+     const latest=await api('orders');
+     if(active)setOrders(latest.data);
+    }
+   }catch{/* Keep the dashboard usable while Tala is temporarily unavailable. */}
+   finally{running=false}
+  };
+  void sync();
+  const timer=window.setInterval(()=>void sync(),180000);
+  return()=>{active=false;window.clearInterval(timer)};
+ },[auth,brand]);
  useEffect(()=>{
   if(!auth)return;
   let active=true;
@@ -200,6 +221,24 @@ export default function Page(){
   return <select className="field" aria-label={t("فلتر شركة الشحن")} value={carrierFilter} onChange={e=>{setCarrierFilter(e.target.value);setSelected([])}}>
    <option value="">{t("كل شركات الشحن")}</option>{carrierNames.map(name=><option key={name} value={name}>{t(name)}</option>)}
   </select>;
+ }
+ function talaFinanceSummary(rows:Order[]){
+  const orders=rows.filter(order=>order.shippingCompany===talaExpress&&order.talaStatusCode);
+  if(!orders.length)return null;
+  const amounts=orders.reduce((sum,order)=>({
+   delivery:sum.delivery+(order.talaDeliveryFees??0),
+   collected:sum.collected+(order.talaCollectedAmount??0),
+   pending:sum.pending+(order.talaPendingCollectionAmount??0),
+   fees:sum.fees+(order.talaCollectedFees??0),
+   due:sum.due+(order.talaCustomerDue??0),
+  }),{delivery:0,collected:0,pending:0,fees:0,due:0});
+  return <><h3>{t("المبالغ المسجلة في تالا")}</h3><div className="tracking-grid tracking-finance tala-finance-grid">
+   <div className="tracking-card tala-finance-delivery"><span>{t("رسوم الشحن حسب تالا")}</span><strong>{money(amounts.delivery)}</strong></div>
+   <div className="tracking-card tala-finance-collected"><span>{t("المبلغ المحصل حسب تالا")}</span><strong>{money(amounts.collected)}</strong></div>
+   <div className="tracking-card tala-finance-pending"><span>{t("المبلغ قيد التحصيل حسب تالا")}</span><strong>{money(amounts.pending)}</strong></div>
+   <div className="tracking-card tala-finance-fees"><span>{t("رسوم تالا المحصلة")}</span><strong>{money(amounts.fees)}</strong></div>
+   <div className="tracking-card tala-finance-due"><span>{t("المستحق حسب تالا")}</span><strong>{money(amounts.due)}</strong></div>
+  </div></>;
  }
  function salesSummary(rows:Order[]){
   const amounts=rows.reduce((sum,order)=>{
@@ -339,12 +378,12 @@ export default function Page(){
  {tab==='dashboard'&&<>
   {brand==='homey'&&<TalaShipments brand="homey" revision={0} orderIds={talaOrderIds}
    trackingOrders={talaTrackingOrders} openOrder={setDetailOrderId} onSettings={()=>openShippingIntegration(talaExpress)} dashboard/>}
-  <section className="panel tracking-overview"><h2>{t("المبيعات والشحن والتحصيل")}</h2>{salesSummary(periodOrders)}{financeSummary(periodOrders)}</section>
+  <section className="panel tracking-overview"><h2>{t("المبيعات والشحن والتحصيل")}</h2>{salesSummary(periodOrders)}{financeSummary(periodOrders)}{brand==='homey'&&talaFinanceSummary(periodOrders)}</section>
   <section className="panel tracking-overview">
    <h2>{t("حالات الشحن")}</h2><div className="tracking-grid tracking-shipping">{shippingStates.map(status=><button key={status} className={'tracking-card tracking-'+status} onClick={()=>showOrders(status)}><span>{t(statusLabels[status])}</span><strong>{number(periodOrders.filter(o=>o.status===status).length)}</strong></button>)}</div>
    <h2>{t("حالات التحصيل")}</h2><div className="tracking-grid tracking-finance">{collectionStates.map(state=><button key={state} className={'tracking-card tracking-'+state} onClick={()=>showOrders('all',state)}><span>{t(collectionLabels[state])}</span><strong>{number(periodOrders.filter(o=>collectionState(o)===state).length)}</strong></button>)}</div>
   </section>
-  <section className="panel"><div className="sectionhead"><h2>{t("أحدث الأوردرات")}</h2><div className="toolbar"><button className="btn secondary" onClick={()=>{setPeriod('all');showOrders()}}>{t("عرض كل الأوردرات")}</button><button className="btn" onClick={()=>setEditing(newOrder(brand))}><Plus size={16}/>{t("إضافة أوردر")}</button></div></div>{table(periodOrders.slice(0,8))}</section>
+  <section className="panel"><div className="sectionhead"><h2>{t("أحدث الأوردرات")}</h2><div className="toolbar"><button className="btn secondary" onClick={()=>{setPeriod('all');showOrders()}}>{t("عرض كل الأوردرات")}</button><button className="btn" onClick={()=>{setDeliveryChosen(false);setEditing(newOrder(brand))}}><Plus size={16}/>{t("إضافة أوردر")}</button></div></div>{table(periodOrders.slice(0,8))}</section>
  </>}
  {tab==='orders'&&<section className="panel"><div className="sectionhead"><h2>{t("الطلبات (")}{number(visible.length)})</h2><div className="toolbar">{printFilter}<input className="field" placeholder={t("ابحث بالاسم أو رقم التليفون أو المنتج")} value={search} onChange={e=>{setSearch(e.target.value);setSelected([])}}/><select className="field" aria-label={t("فلتر حالة الشحن")} value={filter} onChange={e=>{setFilter(e.target.value);setSelected([])}}><option value="all">{t("كل الحالات")}</option><option value="active">{t("كل الطلبات غير الملغية")}</option>{statuses.map(s=><option key={s} value={s}>{t(statusLabels[s])}</option>)}</select><select className="field" aria-label={t("فلتر حالة التحصيل")} value={collectionFilter} onChange={e=>{setCollectionFilter(e.target.value as CollectionState|'all');setSelected([])}}><option value="all">{t("كل حالات التحصيل")}</option>{collectionStates.map(state=><option key={state} value={state}>{t(collectionLabels[state])}</option>)}</select>{carrierSelect()}<button className="btn secondary" onClick={()=>exportCsv(visible)}><Download size={16}/> CSV</button><button className="btn" onClick={()=>{setErr('');setEditing(newOrder(brand))}}><Plus size={16}/>{t("أوردر جديد")}</button></div></div>{selectedOrders.length>0&&<div className="toolbar bulk-actions">
  <strong>{number(selectedOrders.length)}{t("طلب محدد")}</strong>
@@ -431,14 +470,52 @@ export default function Page(){
     <button type="button" className="btn secondary tiny" onClick={()=>setEditing(null)}>{t("إغلاق ×")}</button>
    </div>
    <form onSubmit={saveOrder}>
+    <section className="order-form-section order-carrier-choice">
+     <h3 className="editor-section-title"><Truck size={18}/>{t('طريقة التوصيل')}</h3>
+     <label>{t("شركة الشحن")}
+      <select className="field" required={!editing.id} value={editing.shippingCompany?'company:'+editing.shippingCompany:editing.id||deliveryChosen?'self':''} onChange={e=>{
+       const value=e.target.value;setDeliveryChosen(true);
+       changeShippingLocation({shippingCompany:value==='self'?'':value.slice('company:'.length)});
+      }}>
+       <option value="" disabled>{t("اختار شركة الشحن أولاً")}</option>
+       {registeredCompanies.map(name=><option key={name} value={'company:'+name}>{t(name)}</option>)}
+       {editing.shippingCompany&&!registeredCompanies.includes(editing.shippingCompany)&&<option value={'company:'+editing.shippingCompany}>{t(editing.shippingCompany)}</option>}
+       <option value="self">{t("توصيل بنفسي")}</option>
+      </select>
+     </label>
+    </section>
+    {(editing.id||deliveryChosen)&&<>
     <section className="order-form-section">
     <h3 className="editor-section-title"><Users size={18}/>{t('العميل والعنوان')}</h3>
     <div className="formgrid order-basics">
      {inputOrder('customerName',t("اسم العميل"),true)}
      {inputOrder('phone',t("رقم التليفون"),true)}
-     <OrderLocationFields locations={orderLocations} governorate={editing.governorate} city={editing.city} required={!editing.id}
-      onAreaAdded={(governorate,city)=>setOrderLocations(locations=>({...locations,[governorate]:[...new Set([...(locations[governorate]??[]),city])].sort((a,b)=>a.localeCompare(b,'ar'))}))}
-      onChange={(governorate,city)=>changeShippingLocation({governorate,city})}/>
+     {editing.brand==='homey'&&editing.shippingCompany===talaExpress&&(!editing.id||canRetryTala||(!closedWithoutDelivery(editing)&&editing.status!=='delivered'))?
+      <TalaDestinationFields governorate={editing.governorate} city={editing.city} locations={orderLocations} retryOrder={canRetryTala}
+       price={Math.max(0,totalOf(editing)-editing.shipping-editing.prepaid)}
+       onRateChange={rate=>setEditing(order=>order?{...order,shipping:rate}:order)}
+       onZoneSelected={zone=>{
+        const governorate=Object.keys(orderLocations).find(name=>comparableLocation(name)===comparableLocation(zone));
+        if(!governorate){setErr('المحافظة اللي رجعتها تالا مش موجودة ضمن المحافظات المحفوظة.');throw new Error('TALA_GOVERNORATE_NOT_FOUND')}
+        setEditing(order=>order?{...order,governorate,city:''}:order);
+       }}
+       onAreaSelected={async area=>{
+        const governorate=editing.governorate;
+        if(!governorate)return;
+        const existing=orderLocations[governorate]?.find(name=>comparableLocation(name)===comparableLocation(area));
+        const city=existing||area;
+        try{
+         if(!existing){
+          await api('order-locations','POST',{governorate,city});
+          setOrderLocations(current=>({...current,[governorate]:[...new Set([...(current[governorate]??[]),city])].sort((a,b)=>a.localeCompare(b,'ar'))}));
+         }
+         setEditing(order=>order?{...order,city}:order);
+        }catch{setErr('تعذّر حفظ منطقة تالا ضمن بيانات العنوان. راجع المحافظة وحاول تاني.');throw new Error('TALA_LOCALITY_SAVE_FAILED')}
+       }}/>:
+      <OrderLocationFields locations={orderLocations} governorate={editing.governorate} city={editing.city} required={!editing.id}
+       onAreaAdded={(governorate,city)=>setOrderLocations(locations=>({...locations,[governorate]:[...new Set([...(locations[governorate]??[]),city])].sort((a,b)=>a.localeCompare(b,'ar'))}))}
+       onChange={(governorate,city)=>changeShippingLocation({governorate,city})}/>}
+
      {orderLocationError&&<div className="full notice error" role="alert">{orderLocationError} <button type="button" className="btn secondary tiny" onClick={loadOrderLocations}>{t("إعادة المحاولة")}</button></div>}
      <label className="full">{t("العنوان بالتفصيل")}
       <input className="field" required={!editing.id} value={editing.address} onChange={e=>setEditing({...editing,address:e.target.value})}/>
@@ -446,22 +523,9 @@ export default function Page(){
     </div>
     </section>
     <section className="order-form-section">
-    <h3 className="editor-section-title"><Truck size={18}/>{t('بيانات التوصيل')}</h3>
+    <h3 className="editor-section-title"><Truck size={18}/>{t('بيانات الشحن')}</h3>
     <div className="formgrid order-basics">
-     <label>{t("شركة الشحن")}
-      <select className="field" required={!editing.id} value={editing.shippingCompany?'company:'+editing.shippingCompany:editing.id||editing.shippingCompany===''?'self':''} onChange={e=>changeShippingLocation({shippingCompany:e.target.value==='self'?'':e.target.value.slice('company:'.length)})}>
-       <option value="" disabled>{t("اختار طريقة التوصيل")}</option>
-       {registeredCompanies.map(name=><option key={name} value={'company:'+name}>{t(name)}</option>)}
-       {editing.shippingCompany&&!registeredCompanies.includes(editing.shippingCompany)&&<option value={'company:'+editing.shippingCompany}>{t(editing.shippingCompany)}</option>}
-       <option value="self">{t("توصيل بنفسي")}</option>
-      </select>
-     </label>
      {numOrder('shipping',t("تكلفة الشحن"))}
-     {(!editing.id||canRetryTala)&&editing.brand==='homey'&&editing.shippingCompany===talaExpress&&!closedWithoutDelivery(editing)&&editing.status!=='delivered'&&
-      <TalaDestinationFields key={editing.governorate+':'+editing.city} governorate={editing.governorate} city={editing.city} retryOrder={canRetryTala}/>}
-
-     {editing.shippingCompany===talaExpress&&editing.city&&talaRate(talaExpress,editing.governorate,editing.city)===undefined&&
-      <small className="full muted">{t("سعر تالا للمنطقة دي محتاج تأكيد. اكتب تكلفة الشحن يدويًا.")}</small>}
     </div>
     </section>
     <section className="order-form-section">
@@ -519,8 +583,10 @@ export default function Page(){
     <div className="modalfooter">
      <button type="button" className="btn secondary" onClick={()=>setEditing(null)}>{t("إلغاء")}</button>
      {canRetryTala&&<button type="submit" className="btn" value="retry-tala" disabled={busy}><Truck size={17}/>{t('حفظ وإعادة الإرسال لتالا')}</button>}
-     <button type="submit" formNoValidate={canRetryTala} className={canRetryTala?'btn secondary':'btn'} disabled={busy||(!editing.id&&!Object.keys(orderLocations).length)}><ShieldCheck size={17}/>{t("حفظ الطلب")}</button>
+     <button type="submit" formNoValidate={canRetryTala} className={canRetryTala?'btn secondary':'btn'} disabled={busy||(!editing.id&&!deliveryChosen)}><ShieldCheck size={17}/>{t("حفظ الطلب")}</button>
     </div>
+    </>}
+    {!editing.id&&!deliveryChosen&&<p className="notice order-carrier-hint" role="status">{t("اختار شركة الشحن أو التوصيل الذاتي علشان تظهر خانات الطلب.")}</p>}
    </form>
   </section>
  </div>}
@@ -544,7 +610,7 @@ export default function Page(){
  function selectOrder(key:'governorate'|'source'|'status'|'paymentMethod',label:string,options:readonly string[],labels?:Record<string,string>){return <label key={key}>{t(label)}<select className="field" value={editing?.[key]??''} onChange={e=>setEditing(x=>x?{...x,[key]:e.target.value}:x)}>{options.map(v=><option value={v} key={v}>{t(labels?.[v]||v||'اختر')}</option>)}</select></label>}
  function table(rows:Order[],selectable=false){
  const allChecked=rows.length>0&&rows.every(o=>selected.includes(o.id));
- return <div className="tracking-table-scroll" tabIndex={0} role="region" aria-label={t("جدول الأوردرات")}><table className="table tracking-table"><thead><tr>{selectable&&<th><input type="checkbox" aria-label={t("تحديد كل الطلبات الظاهرة")} disabled={!rows.length||busy} checked={allChecked} onChange={()=>setSelected(allChecked?[]:rows.map(o=>o.id))}/></th>}{columns.map(x=><th key={x}>{t(x)}</th>)}</tr></thead><tbody>{rows.map(o=><tr key={o.id}>{selectable&&<td><input type="checkbox" aria-label={t("تحديد طلب ")+o.customerName} disabled={busy} checked={selected.includes(o.id)} onChange={e=>setSelected(e.target.checked?[...selected,o.id]:selected.filter(id=>id!==o.id))}/></td>}<td><strong className="order-ref" dir="ltr">#{o.id.slice(0,8).toUpperCase()}</strong></td><td><button type="button" className="order-name-link" onClick={()=>setDetailOrderId(o.id)}>{o.customerName}</button>{printBadge(printed.has('order:'+o.id))}</td><td><select className="tracking-select" aria-label={t("شركة الشحن ")+o.customerName} value={o.shippingCompany||''} disabled={busy} onChange={e=>void updateOrders([o],{shippingCompany:e.target.value})}><option value="">{t("توصيل بنفسي")}</option>{registeredCompanies.map(name=><option key={name} value={name}>{t(name)}</option>)}{o.shippingCompany&&!registeredCompanies.includes(o.shippingCompany)&&<option value={o.shippingCompany}>{t(o.shippingCompany)}</option>}</select></td>
+ return <div className="tracking-table-scroll" tabIndex={0} role="region" aria-label={t("جدول الأوردرات")}><table className="table tracking-table"><thead><tr>{selectable&&<th><input type="checkbox" aria-label={t("تحديد كل الطلبات الظاهرة")} disabled={!rows.length||busy} checked={allChecked} onChange={()=>setSelected(allChecked?[]:rows.map(o=>o.id))}/></th>}{columns.map(x=><th key={x}>{t(x)}</th>)}</tr></thead><tbody>{rows.map(o=><tr key={o.id}>{selectable&&<td><input type="checkbox" aria-label={t("تحديد طلب ")+o.customerName} disabled={busy} checked={selected.includes(o.id)} onChange={e=>setSelected(e.target.checked?[...selected,o.id]:selected.filter(id=>id!==o.id))}/></td>}<td><strong className="order-ref" dir="ltr">#{o.id.slice(0,8).toUpperCase()}</strong></td><td><button type="button" className="order-name-link" onClick={()=>setDetailOrderId(o.id)}>{o.customerName}</button>{o.talaStatusName&&<span className={'tala-status-badge tala-status-'+(o.talaStatusCode||'').toLowerCase()} title={t('آخر حالة مزامنة من تالا')}>{o.talaStatusName}</span>}{printBadge(printed.has('order:'+o.id))}</td><td><select className="tracking-select" aria-label={t("شركة الشحن ")+o.customerName} value={o.shippingCompany||''} disabled={busy} onChange={e=>void updateOrders([o],{shippingCompany:e.target.value})}><option value="">{t("توصيل بنفسي")}</option>{registeredCompanies.map(name=><option key={name} value={name}>{t(name)}</option>)}{o.shippingCompany&&!registeredCompanies.includes(o.shippingCompany)&&<option value={o.shippingCompany}>{t(o.shippingCompany)}</option>}</select></td>
  <td><select className={'tracking-select tracking-'+o.status} aria-label={t("حالة الشحن ")+o.customerName} value={o.status} disabled={busy} onChange={e=>void updateOrders([o],e.target.value as Status)}>{statuses.map(status=><option key={status} value={status}>{t(statusLabels[status])}</option>)}</select>{o.status==='shipped'&&<small className="tracking-awaiting-update">{t("في انتظار تحديث شركة الشحن")}</small>}</td>
  <td><select className={'tracking-select tracking-'+collectionState(o)} aria-label={t("حالة التحصيل ")+o.customerName} value={collectionState(o)} disabled={busy} onChange={e=>chooseCollection(o,e.target.value as CollectionState)}>{collectionStates.map(state=><option key={state} value={state} disabled={state==='partial'&&carrierAmounts(o).due<=0}>{t(collectionLabels[state])}</option>)}</select>{o.carrierReceived? <button className="tracking-edit-amount" disabled={busy} title={t("تعديل المبلغ المستلم")} aria-label={t("تعديل المبلغ المستلم ")+o.customerName} onClick={()=>chooseCollection(o,collectionState(o)==='partial'?'partial':'paid')}><Pencil size={13}/></button>:null}</td>
  <td>{money(carrierAmounts(o).due)}</td><td>{money(carrierAmounts(o).received)}</td><td>{money(carrierAmounts(o).remaining)}</td><td dir="ltr" className="numeric-value">{englishDigits(o.phone)}</td><td className="tracking-order-detail">{[t(o.governorate),o.city,o.address].filter(Boolean).join('، ')||'—'}</td><td className="tracking-order-detail">{o.items.map(i=>i.name+' × '+number(i.quantity)).join('، ')}</td><td className="numeric-value">{dateEN(o.createdAt)}</td><td className="numeric-value">{formatEntryDate(o.enteredAt||o.createdAt)}</td><td className="order-actions"><div className="links">{canPrepareShipment(o)&&<button className="btn tiny secondary" title={t("تجهيز ملف الشحن")} aria-label={t("تجهيز ملف الشحن")} onClick={()=>openShippingIntegration(o.shippingCompany,[o])}><Truck size={15}/></button>}<a className="btn tiny secondary" title={t("طباعة فاتورة PDF")} href={'/orders/'+o.id+'/invoice'} target="_blank" rel="noopener noreferrer"><FileText size={15}/></a><button className="btn tiny secondary" title={t("طباعة البوليصة")} onClick={()=>preview([o])}><Printer size={15}/>{t("طباعة")}</button><button className="btn tiny secondary" title={t("تعديل")} onClick={()=>{setErr('');setEditing({...o})}}><Pencil size={15}/></button>{o.status!=='confirmed'&&<button className="btn tiny secondary" title={t("تأكيد الطلب")} disabled={busy} onClick={()=>updateOrders([o],'confirmed')}><CheckCircle2 size={15}/></button>}{o.status!=='cancelled'&&<button className="btn tiny secondary" title={t("إلغاء الطلب")} disabled={busy} onClick={()=>updateOrders([o],'cancelled')}><XCircle size={15}/></button>}<button className="btn tiny danger" title={t("حذف")} disabled={busy} onClick={()=>updateOrders([o],'delete')}><Trash2 size={15}/></button></div></td></tr>)}</tbody></table>{rows.length===0&&<div className="empty">{!loaded?t("جاري تحميل البيانات…"):t("مفيش أوردرات مطابقة حالياً. اضغط إضافة أوردر للبدء.")}</div>}</div>}

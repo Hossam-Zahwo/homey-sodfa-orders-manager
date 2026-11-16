@@ -6,12 +6,12 @@ function sql(){
  if(!url)throw new Error('Neon database is not configured');
  return neon(url);
 }
-const orderFields:Record<string,string>={talaTrackingCode:'tala_tracking_code',talaDispatchState:'tala_dispatch_state',manualCollection:'manual_collection',manualTotal:'manual_total',carrierReceived:'carrier_received',shippingCompany:'shipping_company',enteredAt:'entered_at',createdAt:'created_at',updatedAt:'updated_at',customerName:'customer_name',alternatePhone:'alternate_phone',paymentMethod:'payment_method',assignedTo:'assigned_to',deletedAt:'deleted_at'};
+const orderFields:Record<string,string>={talaTrackingCode:'tala_tracking_code',talaDispatchState:'tala_dispatch_state',talaStatusCode:'tala_status_code',talaStatusName:'tala_status_name',talaDeliveredAmount:'tala_delivered_amount',talaDeliveryFees:'tala_delivery_fees',talaCustomerDue:'tala_customer_due',talaCollectedAmount:'tala_collected_amount',talaPendingCollectionAmount:'tala_pending_collection_amount',talaCollectedFees:'tala_collected_fees',manualCollection:'manual_collection',manualTotal:'manual_total',carrierReceived:'carrier_received',shippingCompany:'shipping_company',enteredAt:'entered_at',createdAt:'created_at',updatedAt:'updated_at',customerName:'customer_name',alternatePhone:'alternate_phone',paymentMethod:'payment_method',assignedTo:'assigned_to',deletedAt:'deleted_at'};
 const customerFields:Record<string,string>={alternatePhone:'alternate_phone',createdAt:'created_at',updatedAt:'updated_at',deletedAt:'deleted_at'};
 function fromDb<T>(row:Record<string,unknown>,fields:Record<string,string>):T{
  const reverse=Object.fromEntries(Object.entries(fields).map(([a,b])=>[b,a]));
  const obj=Object.fromEntries(Object.entries(row).map(([k,v])=>[reverse[k]||k,v]));
- for(const k of ['prepaid','shipping','discount','carrierReceived','version'])if(k in obj)obj[k]=Number(obj[k]??0);
+ for(const k of ['prepaid','shipping','discount','carrierReceived','version','talaDeliveredAmount','talaDeliveryFees','talaCustomerDue','talaCollectedAmount','talaPendingCollectionAmount','talaCollectedFees'])if(k in obj)obj[k]=Number(obj[k]??0);
  for(const k of ['manualTotal','manualCollection'])if(obj[k]!=null)obj[k]=Number(obj[k]);
  for(const k of ['enteredAt','createdAt','updatedAt','deletedAt'])if(obj[k] instanceof Date)obj[k]=(obj[k] as Date).toISOString();
  if('deletedAt' in obj && obj.deletedAt==null)obj.deletedAt='';
@@ -32,14 +32,21 @@ export async function getOrders():Promise<Order[]>{
   WHERE o.deleted_at IS NULL
   ORDER BY entered_at DESC, o.id DESC`;
  if(!rows.length)return [];
- const shipments=await sql()`SELECT order_id,state,tracking_code FROM public.tala_order_shipments`.catch(error=>{
+ const shipments=await sql()`SELECT order_id,state,tracking_code,to_jsonb(s) AS provider_data FROM public.tala_order_shipments s`.catch(error=>{
   if(error?.code==='42P01')return [];
   throw error;
  });
  const byOrder=new Map(shipments.map(row=>[row.order_id,row]));
  return rows.map(row=>{
   const shipment=byOrder.get(row.id);
-  return order(shipment?{...row,tala_tracking_code:shipment.tracking_code,tala_dispatch_state:shipment.state}:row);
+  const provider=shipment?.provider_data&&typeof shipment.provider_data==='object'?shipment.provider_data as Record<string,unknown>:{};
+  return order({...row,
+   tala_tracking_code:shipment?.tracking_code,tala_dispatch_state:shipment?.state,
+   tala_status_code:provider.provider_status_code,tala_status_name:provider.provider_status_name,
+   tala_delivered_amount:provider.provider_delivered_amount,tala_delivery_fees:provider.provider_delivery_fees,
+   tala_customer_due:provider.provider_customer_due,tala_collected_amount:provider.provider_collected_amount,
+   tala_pending_collection_amount:provider.provider_pending_collection_amount,tala_collected_fees:provider.provider_collected_fees,
+  });
  });
 }
 export async function getOrderLocations():Promise<Record<string,string[]>>{

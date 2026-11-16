@@ -3,7 +3,7 @@ const tokens = new Map<string,{token:string; expiresAt:number}>();
 const logins = new Map<string,Promise<string>>();
 
 export class TalaError extends Error {
- constructor(readonly code: 'unreachable'|'unauthenticated'|'rejected') { super(code); }
+ constructor(readonly code: 'unreachable'|'unauthenticated'|'forbidden'|'rejected') { super(code); }
 }
 
 export async function graphql<T>(endpoint:string,query: string, variables: object, language: 'ar'|'en', token?: string): Promise<T> {
@@ -16,13 +16,17 @@ export async function graphql<T>(endpoint:string,query: string, variables: objec
   });
  } catch { throw new TalaError('unreachable'); }
  if (response.status === 401) throw new TalaError('unauthenticated');
+ if (response.status === 403) throw new TalaError('forbidden');
  if (!response.ok) throw new TalaError('unreachable');
  const result = await response.json().catch(() => null);
- if (result?.errors?.some((error: {message?: string; extensions?: {code?:string}}) =>
-  error.extensions?.code === 'UNAUTHENTICATED' || /^Unauthenticated\.?$/i.test(error.message ?? ''))) {
+ const errors:Array<{message?:string;extensions?:{code?:string}}> = Array.isArray(result?.errors)?result.errors:[];
+ if (errors.some(error=>error.extensions?.code==='UNAUTHENTICATED'||/^Unauthenticated\.?$/i.test(error.message??''))) {
   throw new TalaError('unauthenticated');
  }
- if (result?.errors?.length || !result?.data) throw new TalaError('rejected');
+ if (errors.some(error=>['FORBIDDEN','ACCESS_DENIED','UNAUTHORIZED'].includes(error.extensions?.code??'')||/^This action is unauthorized\.?$/i.test(error.message??''))) {
+  throw new TalaError('forbidden');
+ }
+ if (errors.length || !result?.data) throw new TalaError('rejected');
  return result.data;
 }
 
@@ -32,7 +36,7 @@ export async function login(cacheKey:string,endpoint:string,input: {username:str
  for(const [id,entry] of tokens)if(entry.expiresAt<=Date.now())tokens.delete(id);
  let pending=logins.get(cacheKey);
  if (!pending) {
-  pending=graphql<{login:{token:string}}>(endpoint,loginQuery,{input},'en').then(({login})=>{
+  pending=graphql<{login:{token:string}}>(endpoint,loginQuery,{input:{...input,rememberMe:true}},'en').then(({login})=>{
    if (!login?.token) throw new TalaError('rejected');
    tokens.set(cacheKey,{token:login.token,expiresAt:Date.now()+60*60*1000});
    return login.token;
