@@ -25,6 +25,7 @@ type Tab='dashboard'|'orders'|'carriers'|'shipping-integrations'|'customers'|'re
 const newOrder=(brand:Brand):Order=>({id:'',creationRequestId:crypto.randomUUID(),brand,createdAt:new Date().toLocaleDateString('en-CA'),updatedAt:'',version:0,customerName:'',phone:'',alternatePhone:'',governorate:'',city:'',address:'',source:'',paymentMethod:'الدفع عند الاستلام',prepaid:0,shipping:0,discount:0,items:[{name:'',sku:'',quantity:1,price:0}],status:'new',notes:'',assignedTo:'',deletedAt:''});
 const newCustomer=(brand:Brand):Customer=>({id:'',brand,name:'',phone:'',alternatePhone:'',governorate:'',city:'',address:'',notes:'',createdAt:'',updatedAt:'',deletedAt:''});
 const englishDigits=(value:string|number)=>String(value??'').replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-0x660)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-0x6f0));
+const comparableLocation=(value:string)=>value.normalize('NFKD').replace(/[\\p{M}ـ]/gu,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').trim().replace(/\\s+/g,' ');
 const number=(n:number)=>new Intl.NumberFormat('en-US',{maximumFractionDigits:2,numberingSystem:'latn'}).format(n);
 const dateEN=(date:string)=>{const d=new Date(date);return Number.isNaN(d.getTime())?'—':d.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric',numberingSystem:'latn'})};
 const enteredDate=new Intl.DateTimeFormat('en-GB',{dateStyle:'short',timeStyle:'short',timeZone:'Africa/Cairo',numberingSystem:'latn'});
@@ -493,7 +494,19 @@ export default function Page(){
      </label>
      {numOrder('shipping',t("تكلفة الشحن"))}
      {(!editing.id||canRetryTala)&&editing.brand==='homey'&&editing.shippingCompany===talaExpress&&!closedWithoutDelivery(editing)&&editing.status!=='delivered'&&
-      <TalaDestinationFields key={editing.governorate+':'+editing.city} governorate={editing.governorate} city={editing.city} retryOrder={canRetryTala} price={Math.max(0,totalOf(editing)-editing.shipping-editing.prepaid)} onRateChange={rate=>setEditing(order=>order?{...order,shipping:rate}:order)}/>}
+      <TalaDestinationFields key={editing.governorate} governorate={editing.governorate} city={editing.city} retryOrder={canRetryTala} price={Math.max(0,totalOf(editing)-editing.shipping-editing.prepaid)} onRateChange={rate=>setEditing(order=>order?{...order,shipping:rate}:order)} onAreaSelected={async area=>{
+       const governorate=editing.governorate;
+       if(!governorate)return;
+       const existing=orderLocations[governorate]?.find(name=>comparableLocation(name)===comparableLocation(area));
+       const city=existing||area;
+       try{
+        if(!existing){
+         await api('order-locations','POST',{governorate,city});
+         setOrderLocations(current=>({...current,[governorate]:[...new Set([...(current[governorate]??[]),city])].sort((a,b)=>a.localeCompare(b,'ar'))}));
+        }
+        setEditing(order=>order?{...order,city}:order);
+       }catch{setErr('تعذّر حفظ منطقة تالا ضمن بيانات العنوان. راجع المحافظة وحاول تاني.')}
+      }}/>}
 
     </div>
     </section>
