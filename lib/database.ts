@@ -6,7 +6,7 @@ function sql(){
  if(!url)throw new Error('Neon database is not configured');
  return neon(url);
 }
-const orderFields:Record<string,string>={talaTrackingCode:'tala_tracking_code',talaDispatchState:'tala_dispatch_state',talaStatusCode:'tala_status_code',talaStatusName:'tala_status_name',talaDeliveredAmount:'tala_delivered_amount',talaDeliveryFees:'tala_delivery_fees',talaCustomerDue:'tala_customer_due',talaCollectedAmount:'tala_collected_amount',talaPendingCollectionAmount:'tala_pending_collection_amount',talaCollectedFees:'tala_collected_fees',manualCollection:'manual_collection',manualTotal:'manual_total',carrierReceived:'carrier_received',shippingCompany:'shipping_company',enteredAt:'entered_at',createdAt:'created_at',updatedAt:'updated_at',customerName:'customer_name',alternatePhone:'alternate_phone',paymentMethod:'payment_method',assignedTo:'assigned_to',deletedAt:'deleted_at'};
+const orderFields:Record<string,string>={talaTrackingCode:'tala_tracking_code',talaRequestData:'tala_request_data',talaDispatchState:'tala_dispatch_state',talaStatusCode:'tala_status_code',talaStatusName:'tala_status_name',talaDeliveredAmount:'tala_delivered_amount',talaDeliveryFees:'tala_delivery_fees',talaCustomerDue:'tala_customer_due',talaCollectedAmount:'tala_collected_amount',talaPendingCollectionAmount:'tala_pending_collection_amount',talaCollectedFees:'tala_collected_fees',manualCollection:'manual_collection',manualTotal:'manual_total',carrierReceived:'carrier_received',shippingCompany:'shipping_company',enteredAt:'entered_at',createdAt:'created_at',updatedAt:'updated_at',customerName:'customer_name',alternatePhone:'alternate_phone',paymentMethod:'payment_method',assignedTo:'assigned_to',deletedAt:'deleted_at'};
 const customerFields:Record<string,string>={alternatePhone:'alternate_phone',createdAt:'created_at',updatedAt:'updated_at',deletedAt:'deleted_at'};
 function fromDb<T>(row:Record<string,unknown>,fields:Record<string,string>):T{
  const reverse=Object.fromEntries(Object.entries(fields).map(([a,b])=>[b,a]));
@@ -41,7 +41,7 @@ export async function getOrders():Promise<Order[]>{
   const shipment=byOrder.get(row.id);
   const provider=shipment?.provider_data&&typeof shipment.provider_data==='object'?shipment.provider_data as Record<string,unknown>:{};
   return order({...row,
-   tala_tracking_code:shipment?.tracking_code,tala_dispatch_state:shipment?.state,
+   tala_tracking_code:shipment?.tracking_code,tala_dispatch_state:shipment?.state,tala_request_data:provider.request_data??null,
    tala_status_code:provider.provider_status_code,tala_status_name:provider.provider_status_name,
    tala_delivered_amount:provider.provider_delivered_amount,tala_delivery_fees:provider.provider_delivery_fees,
    tala_customer_due:provider.provider_customer_due,tala_collected_amount:provider.provider_collected_amount,
