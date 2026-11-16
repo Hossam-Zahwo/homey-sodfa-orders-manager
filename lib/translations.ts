@@ -1,4 +1,9 @@
 export const english: Readonly<Record<string, string>> = {
+  "بيانات دخول تالا غير مقبولة. راجع اسم المستخدم وكلمة المرور من إعدادات الربط.": "Tala login was rejected. Check the username and password in integration settings.",
+  "حساب تالا لا يملك صلاحية قراءة قائمة الشحنات. اطلب من تالا تفعيل صلاحية عرض الشحنات (listShipments).": "This Tala account cannot read the shipment list. Ask Tala to enable the listShipments permission.",
+  "تالا رفضت طلب قراءة الشحنات. حدّث الصفحة، ولو استمرت المشكلة أرسل رمز الخطأ للدعم.": "Tala rejected the shipment query. Refresh, and send the error code to support if it continues.",
+  "تعذّر الاتصال بخدمة تالا. حاول التحديث بعد قليل.": "Could not connect to Tala. Try refreshing shortly.",
+  "تعذّر قراءة شحنات تالا. راجع إعدادات الربط أو أعد المحاولة.": "Could not load Tala shipments. Check the integration settings or try again.",
   "اختار شركة الشحن أولاً": "Choose a shipping company first",
   "المحافظة اللي رجعتها تالا مش موجودة ضمن المحافظات المحفوظة.": "The governorate returned by Tala is not in the saved governorates.",
   "المبالغ المسجلة في تالا": "Amounts reported by Tala",
