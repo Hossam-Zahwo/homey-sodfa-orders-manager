@@ -186,7 +186,7 @@ export function TalaDestinationFields({governorate,city,locations,retryOrder=fal
      {govs.map(item=><option key={item} value={item}>{item}</option>)}
     </select></label>
    <label>{label('المنطقة','Area')}
-    <select className="field" name="talaSubzone" required value={subzone} disabled={!governorate||!service||areasLoading||failed||!areas.length} onChange={event=>{
+    <select className="field" name="talaAreaChoice" required value={subzone} disabled={!governorate||!service||areasLoading||failed||!areas.length} onChange={event=>{
      const value=event.target.value;setSubzone(value);setFee(null);
      const area=areas.find(item=>item.key===value);
      if(area){setZone(area.zoneId);void Promise.resolve().then(()=>areaSelectedRef.current?.(area.storedName)).catch(()=>setSubzone(''))}
@@ -194,7 +194,7 @@ export function TalaDestinationFields({governorate,city,locations,retryOrder=fal
      {areas.map(item=><option key={item.key} value={item.key}>{item.label}</option>)}
     </select></label>
    <input type="hidden" name="talaZone" value={selectedArea?.zoneId??''}/>
-   <input type="hidden" name="talaSubzoneId" value={selectedArea?.subzoneId??''}/>
+   <input type="hidden" name="talaSubzone" value={selectedArea?.subzoneId??''}/>
   </div>
   <div className="formgrid order-basics">
    <label>{label('وزن الشحنة بالكيلو','Shipment weight (kg)')}
