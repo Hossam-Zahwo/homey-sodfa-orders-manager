@@ -10,9 +10,10 @@ type Snapshot = {shipments:TalaShipmentSummary[];updatedAt:Date;partial:boolean}
 const api='/api/shipping-integrations/tala';
 const refreshMs=3*60*1000;
 
-export function TalaShipments({brand,revision,orderIds,openOrder,trackingOrders,onSettings,dashboard=false}:{
+export function TalaShipments({brand,revision,orderIds,openOrder,trackingOrders,onSettings,dashboard=false,onSnapshot}:{
  brand:Brand;revision:number;orderIds:ReadonlySet<string>;openOrder:(id:string)=>void;
  trackingOrders?:ReadonlyMap<string,string>;onSettings?:()=>void;dashboard?:boolean;
+ onSnapshot?:(shipments:TalaShipmentSummary[],complete:boolean)=>void;
 }){
  const {language}=useLanguage();
  const label=(ar:string,en:string)=>language==='ar'?ar:en;
@@ -29,6 +30,8 @@ export function TalaShipments({brand,revision,orderIds,openOrder,trackingOrders,
  const amount=(value?:number)=>typeof value==='number'&&Number.isFinite(value)?moneyFormat.format(value)+' '+label('ج.م','EGP'):'—';
  const sheetDate=(value?:string)=>value&&Number.isFinite(Date.parse(value))?dateFormat.format(new Date(value)):'—';
  const refresh=useRef<()=>void>(()=>{});
+ const reportSnapshot=useRef(onSnapshot);
+ useEffect(()=>{reportSnapshot.current=onSnapshot},[onSnapshot]);
 
  useEffect(()=>{
   const controller=new AbortController();
@@ -52,7 +55,11 @@ export function TalaShipments({brand,revision,orderIds,openOrder,trackingOrders,
      hasMore=data.hasMore;
      for(const shipment of data.shipments)if(shipment.code)shipments.set(shipment.code,shipment);
     }
-    if(!controller.signal.aborted)setSnapshot({shipments:[...shipments.values()],updatedAt:new Date(),partial:hasMore});
+    if(!controller.signal.aborted){
+     const values=[...shipments.values()];
+     setSnapshot({shipments:values,updatedAt:new Date(),partial:hasMore});
+     reportSnapshot.current?.(values,!hasMore);
+    }
    }catch(failure){
     if(!controller.signal.aborted)setError(failure instanceof Error?failure.message:'unreachable');
    }finally{

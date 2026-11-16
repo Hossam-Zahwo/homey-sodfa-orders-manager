@@ -3,6 +3,7 @@ import {useTranslation,LanguageSwitch} from '@/app/language';
 
 import {customerPrintKey,printKeys,printDocuments} from '@/lib/print-history';
 import {talaExpress,talaRate} from '@/lib/tala-shipping';
+import type {TalaShipmentSummary} from '@/lib/tala-connection';
 import {OrderDetails} from './order-details';
 import {TalaDestinationFields} from './tala-destination-fields';
 import {TalaShipments} from './tala-shipments';
@@ -38,6 +39,35 @@ export default function Page(){
  const money=(n:number)=>number(n)+' '+t('ج.م');
  const [auth,setAuth]=useState<boolean|null>(null),[email,setEmail]=useState(''),[brand,setBrand]=useState<Brand>('homey'),[tab,setTab]=useState<Tab>('dashboard'),[orders,setOrders]=useState<Order[]>([]),[customers,setCustomers]=useState<Customer[]>([]),[waybills,setWaybills]=useState<Waybill[]>([]),[search,setSearch]=useState(''),[filter,setFilter]=useState('all'),[editing,setEditing]=useState<Order|null>(null),[editCustomer,setEditCustomer]=useState<Customer|null>(null),[busy,setBusy]=useState(false),[err,setErr]=useState(''),[notice,setNotice]=useState(''),[loaded,setLoaded]=useState(false);
  const [orderLocations,setOrderLocations]=useState<Record<string,string[]>>({});
+ const [talaLive,setTalaLive]=useState<TalaShipmentSummary[]>([]);
+ const [talaLiveComplete,setTalaLiveComplete]=useState(false);
+ useEffect(()=>{
+  if(!auth||brand!=='homey'){setTalaLive([]);setTalaLiveComplete(false);return}
+  let cancelled=false;
+  async function syncTala(){
+   try{
+    const found=new Map<string,TalaShipmentSummary>();
+    let hasMore=true;
+    for(let page=1;page<=50&&hasMore;page++){
+     const response=await fetch('/api/shipping-integrations/tala',{
+      method:'POST',credentials:'same-origin',cache:'no-store',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({brand:'homey',operation:'shipments',page,days:90}),
+     });
+     if(!response.ok)throw new Error('Tala unavailable');
+     const json=await response.json();
+     hasMore=json.data?.hasMore===true;
+     for(const shipment of json.data?.shipments??[]){
+      if(shipment.code)found.set(shipment.code,shipment);
+     }
+    }
+    if(!cancelled){setTalaLive([...found.values()]);setTalaLiveComplete(!hasMore)}
+   }catch{if(!cancelled)setTalaLiveComplete(false)}
+  }
+  void syncTala();
+  const timer=window.setInterval(()=>{if(!document.hidden)void syncTala()},180000);
+  return()=>{cancelled=true;window.clearInterval(timer)};
+ },[auth,brand]);
  const [orderLocationError,setOrderLocationError]=useState('');
  const [bulkLocation,setBulkLocation]=useState({governorate:'',city:''});
  async function loadOrderLocations(){
@@ -123,6 +153,14 @@ export default function Page(){
  const talaOrders=brandOrders.filter(order=>order.shippingCompany===talaExpress);
  const talaOrderIds=new Set(talaOrders.map(order=>order.id));
  const talaTrackingOrders=new Map(talaOrders.flatMap(order=>order.talaTrackingCode?[[order.talaTrackingCode,order.id] as const]:[]));
+ const talaByReference=new Map<string,TalaShipmentSummary>();
+ for(const shipment of talaLive){
+  const orderId=shipment.refNumber&&talaOrderIds.has(shipment.refNumber)?shipment.refNumber:talaTrackingOrders.get(shipment.code);
+  if(orderId)talaByReference.set(orderId,shipment);
+ }
+ const talaForOrder=(o:Order)=>o.shippingCompany===talaExpress?talaByReference.get(o.id):undefined;
+ const talaFees=periodOrders.filter(o=>o.shippingCompany===talaExpress).reduce((sum,o)=>sum+(talaForOrder(o)?.deliveryFees??0),0);
+ const talaCollected=periodOrders.filter(o=>o.shippingCompany===talaExpress).reduce((sum,o)=>sum+(talaForOrder(o)?.deliveredAmount??0),0);
  const canRetryTala=Boolean(editing?.id&&editing.brand==='homey'&&editing.shippingCompany===talaExpress&&editing.talaDispatchState==='review'&&!closedWithoutDelivery(editing)&&editing.status!=='delivered');
  const periodOrders=brandOrders.filter(o=>inPeriod(o.enteredAt||o.createdAt));
  const matchesCarrier=(o:Order)=>!carrierFilter||(o.shippingCompany||'')===carrierFilter;
@@ -214,9 +252,9 @@ export default function Page(){
  function financeSummary(rows:Order[]){
   const amounts=totals(rows);
   return <div className="tracking-grid tracking-finance">
-   <div className="tracking-card tracking-partial"><span>{t("صافي المستحق بعد خصم شحن تالا")}</span><strong>{money(amounts.due)}</strong></div>
+   <div className="tracking-card tracking-partial"><span>{t("المستحق التقديري وفق بياناتنا (ليس كشف تسوية تالا)")}</span><strong>{money(amounts.due)}</strong></div>
    <div className="tracking-card tracking-paid"><span>{t("المستلم من شركات الشحن")}</span><strong>{money(amounts.received)}</strong></div>
-   <div className="tracking-card tracking-unpaid"><span>{t("المتبقي")}</span><strong>{money(amounts.remaining)}</strong></div>
+   <div className="tracking-card tracking-unpaid"><span>{t("المتبقي في سجلاتنا (غير مؤكد من تالا)")}</span><strong>{money(amounts.remaining)}</strong></div>
   </div>;
  }
  function carrierTable(){
@@ -338,7 +376,17 @@ export default function Page(){
  <div className="sidebar-mobile-header"><span>{t("القائمة الرئيسية")}</span><button type="button" aria-label={t("إغلاق القائمة")} onClick={()=>setNavigationOpen(false)}><X size={23}/></button></div><div className={'brand '+(brand==='homey'?'homey-brand':'')} role="group" aria-label={brand==='homey'?t("هومي — لوحة الإدارة"):t("صدفة — لوحة الإدارة")}>{brand==='homey'?<div className="brand-logo-surface"><HomeyLogo className="dashboard-homey-logo"/></div>:<img src="/sodfa-logo.png" alt={t("صدفة — SODFA")} width={1950} height={808} style={{display:"block",width:"100%",maxWidth:180,height:"auto",borderRadius:8}}/>}</div><nav className="nav" aria-label={t("أقسام مدير الطلبات")}>{nav.map(([key,label,icon])=><button key={key} type="button" className={tab===key?'active':''} aria-current={tab===key?'page':undefined} onClick={()=>{if(key==='shipping-integrations'&&tab!==key)setShipmentDraft(null);setTab(key);setUnprintedOnly(false);setSelected([]);setFilter('all');setCollectionFilter('all');setCarrierFilter('');setSearch('');setNavigationOpen(false)}}>{icon} <span className="label">{t(label)}</span></button>)}</nav><div className="sidebar-bottom"><ShieldCheck size={17}/><span>{t("لوحة إدارة خاصة وآمنة")}<small>PRIVATE DASHBOARD</small></span></div></aside><main className="main"><header className="header"><div className="header-heading"><button type="button" className="mobile-nav-trigger" aria-label={t("فتح القائمة الجانبية")} aria-controls="app-main-navigation" aria-expanded={navigationOpen} onClick={()=>setNavigationOpen(true)}><Menu size={22}/><span>{t("القائمة")}</span></button><div className="header-title"><h1>{t(nav.find(([key])=>key===tab)?.[1]??'')}</h1></div></div><div className="toolbar top-actions"><LanguageSwitch/><InstallApp/><div className="brand-switch" role="group" aria-label={t("اختيار المتجر")}><button type="button" className={'brand-switch-option '+(brand==='homey'?'active':'')} aria-pressed={brand==='homey'} onClick={()=>{setBrand('homey');setSearch('');setFilter('all');setCollectionFilter('all');setCarrierFilter('')}}><HomeyLogo className="switch-homey-logo"/></button><button type="button" className={'brand-switch-option '+(brand==='sodfa'?'active':'')} aria-pressed={brand==='sodfa'} onClick={()=>{setBrand('sodfa');setSearch('');setFilter('all');setCollectionFilter('all');setCarrierFilter('')}}><img src="/sodfa-logo.png" alt={t("صدفة")} className="switch-sodfa-logo" width={1950} height={808}/></button></div><button className="btn secondary" title={t("تحديث")} onClick={reload} disabled={busy}><RefreshCcw size={16}/></button><button className="btn secondary" title={t("خروج")} onClick={logout}><LogOut size={16}/></button></div></header>{['dashboard','orders','carriers','reports'].includes(tab)&&<div className="periodbar"><strong>{t("الفترة حسب تاريخ الإدخال")}</strong><select className="field" value={period} onChange={e=>setPeriod(e.target.value as typeof period)}><option value="today">{t("النهارده")}</option><option value="week">{t("الأسبوع الحالي")}</option><option value="month">{t("الشهر الحالي")}</option><option value="all">{t("كل الوقت")}</option><option value="custom">{t("تحديد فترة")}</option></select>{period==='custom'&&<><label>{t("من")} <input className="field" type="date" value={fromDate} onChange={e=>setFromDate(e.target.value)}/></label><label>{t("إلى")} <input className="field" type="date" value={toDate} onChange={e=>setToDate(e.target.value)}/></label></>}<span className="muted">{t("إحصائيات")} {brand==='homey'?t("هومي"):t("صدفة")} <span className="period-dot">•</span> {t(periodLabel[period])}</span></div>}{err&&<div className="notice error">{t(err)}</div>}{notice&&<div className="notice">{t(notice)} <button className="btn tiny secondary" onClick={()=>setNotice('')}>{t("إغلاق")}</button></div>}
  {tab==='dashboard'&&<>
   {brand==='homey'&&<TalaShipments brand="homey" revision={0} orderIds={talaOrderIds}
-   trackingOrders={talaTrackingOrders} openOrder={setDetailOrderId} onSettings={()=>openShippingIntegration(talaExpress)} dashboard/>}
+   trackingOrders={talaTrackingOrders} openOrder={setDetailOrderId} onSettings={()=>openShippingIntegration(talaExpress)}
+   onSnapshot={(shipments,complete)=>{setTalaLive(shipments);setTalaLiveComplete(complete)}} dashboard/>}
+  {brand==='homey'&&<section className="panel tracking-overview" aria-label="ملخص تالا الفعلي">
+   <h2>بيانات تالا المباشرة (ليست كشف تسوية)</h2>
+   <div className="tracking-grid tracking-finance">
+    <div className="tracking-card"><span>شحنات تالا المطابقة لأوردراتنا</span><strong>{number(periodOrders.filter(o=>Boolean(talaForOrder(o))).length)}</strong></div>
+    <div className="tracking-card"><span>مبلغ مُحصّل من المستلمين حسب تالا</span><strong>{money(talaCollected)}</strong></div>
+    <div className="tracking-card"><span>رسوم توصيل مسجلة لدى تالا</span><strong>{money(talaFees)}</strong></div>
+   </div>
+   <p className="muted">هذه مبالغ شحن وتحصيل لدى شركة الشحن، وليست إثباتًا لتحويل الأموال إلينا. {talaLiveComplete?'':'نتائج تالا جزئية؛ لا تعتمد على الإجماليات لحين اكتمال التحميل.'} حالات التسوية البنكية تحتاج تقرير تسوية مؤكد من تالا.</p>
+  </section>}
   <section className="panel tracking-overview"><h2>{t("المبيعات والشحن والتحصيل")}</h2>{salesSummary(periodOrders)}{financeSummary(periodOrders)}</section>
   <section className="panel tracking-overview">
    <h2>{t("حالات الشحن")}</h2><div className="tracking-grid tracking-shipping">{shippingStates.map(status=><button key={status} className={'tracking-card tracking-'+status} onClick={()=>showOrders(status)}><span>{t(statusLabels[status])}</span><strong>{number(periodOrders.filter(o=>o.status===status).length)}</strong></button>)}</div>
@@ -544,7 +592,7 @@ export default function Page(){
  function selectOrder(key:'governorate'|'source'|'status'|'paymentMethod',label:string,options:readonly string[],labels?:Record<string,string>){return <label key={key}>{t(label)}<select className="field" value={editing?.[key]??''} onChange={e=>setEditing(x=>x?{...x,[key]:e.target.value}:x)}>{options.map(v=><option value={v} key={v}>{t(labels?.[v]||v||'اختر')}</option>)}</select></label>}
  function table(rows:Order[],selectable=false){
  const allChecked=rows.length>0&&rows.every(o=>selected.includes(o.id));
- return <div className="tracking-table-scroll" tabIndex={0} role="region" aria-label={t("جدول الأوردرات")}><table className="table tracking-table"><thead><tr>{selectable&&<th><input type="checkbox" aria-label={t("تحديد كل الطلبات الظاهرة")} disabled={!rows.length||busy} checked={allChecked} onChange={()=>setSelected(allChecked?[]:rows.map(o=>o.id))}/></th>}{columns.map(x=><th key={x}>{t(x)}</th>)}</tr></thead><tbody>{rows.map(o=><tr key={o.id}>{selectable&&<td><input type="checkbox" aria-label={t("تحديد طلب ")+o.customerName} disabled={busy} checked={selected.includes(o.id)} onChange={e=>setSelected(e.target.checked?[...selected,o.id]:selected.filter(id=>id!==o.id))}/></td>}<td><strong className="order-ref" dir="ltr">#{o.id.slice(0,8).toUpperCase()}</strong></td><td><button type="button" className="order-name-link" onClick={()=>setDetailOrderId(o.id)}>{o.customerName}</button>{printBadge(printed.has('order:'+o.id))}</td><td><select className="tracking-select" aria-label={t("شركة الشحن ")+o.customerName} value={o.shippingCompany||''} disabled={busy} onChange={e=>void updateOrders([o],{shippingCompany:e.target.value})}><option value="">{t("توصيل بنفسي")}</option>{registeredCompanies.map(name=><option key={name} value={name}>{t(name)}</option>)}{o.shippingCompany&&!registeredCompanies.includes(o.shippingCompany)&&<option value={o.shippingCompany}>{t(o.shippingCompany)}</option>}</select></td>
+ return <div className="tracking-table-scroll" tabIndex={0} role="region" aria-label={t("جدول الأوردرات")}><table className="table tracking-table"><thead><tr>{selectable&&<th><input type="checkbox" aria-label={t("تحديد كل الطلبات الظاهرة")} disabled={!rows.length||busy} checked={allChecked} onChange={()=>setSelected(allChecked?[]:rows.map(o=>o.id))}/></th>}{columns.map(x=><th key={x}>{t(x)}</th>)}</tr></thead><tbody>{rows.map(o=><tr key={o.id} className={talaForOrder(o)?.status?.code==='DTR'?'tracking-delivered':talaForOrder(o)?.status?.code==='DEX'?'tracking-refused':''}>{selectable&&<td><input type="checkbox" aria-label={t("تحديد طلب ")+o.customerName} disabled={busy} checked={selected.includes(o.id)} onChange={e=>setSelected(e.target.checked?[...selected,o.id]:selected.filter(id=>id!==o.id))}/></td>}<td><strong className="order-ref" dir="ltr">#{o.id.slice(0,8).toUpperCase()}</strong></td><td><button type="button" className="order-name-link" onClick={()=>setDetailOrderId(o.id)}>{o.customerName}</button>{talaForOrder(o)?.status&&<span className={'status-pill '+(talaForOrder(o)?.status?.code==='DTR'?'paid':'neutral')} title="حالة تالا المباشرة">{talaForOrder(o)?.status?.name}</span>}{printBadge(printed.has('order:'+o.id))}</td><td><select className="tracking-select" aria-label={t("شركة الشحن ")+o.customerName} value={o.shippingCompany||''} disabled={busy} onChange={e=>void updateOrders([o],{shippingCompany:e.target.value})}><option value="">{t("توصيل بنفسي")}</option>{registeredCompanies.map(name=><option key={name} value={name}>{t(name)}</option>)}{o.shippingCompany&&!registeredCompanies.includes(o.shippingCompany)&&<option value={o.shippingCompany}>{t(o.shippingCompany)}</option>}</select></td>
  <td><select className={'tracking-select tracking-'+o.status} aria-label={t("حالة الشحن ")+o.customerName} value={o.status} disabled={busy} onChange={e=>void updateOrders([o],e.target.value as Status)}>{statuses.map(status=><option key={status} value={status}>{t(statusLabels[status])}</option>)}</select>{o.status==='shipped'&&<small className="tracking-awaiting-update">{t("في انتظار تحديث شركة الشحن")}</small>}</td>
  <td><select className={'tracking-select tracking-'+collectionState(o)} aria-label={t("حالة التحصيل ")+o.customerName} value={collectionState(o)} disabled={busy} onChange={e=>chooseCollection(o,e.target.value as CollectionState)}>{collectionStates.map(state=><option key={state} value={state} disabled={state==='partial'&&carrierAmounts(o).due<=0}>{t(collectionLabels[state])}</option>)}</select>{o.carrierReceived? <button className="tracking-edit-amount" disabled={busy} title={t("تعديل المبلغ المستلم")} aria-label={t("تعديل المبلغ المستلم ")+o.customerName} onClick={()=>chooseCollection(o,collectionState(o)==='partial'?'partial':'paid')}><Pencil size={13}/></button>:null}</td>
  <td>{money(carrierAmounts(o).due)}</td><td>{money(carrierAmounts(o).received)}</td><td>{money(carrierAmounts(o).remaining)}</td><td dir="ltr" className="numeric-value">{englishDigits(o.phone)}</td><td className="tracking-order-detail">{[t(o.governorate),o.city,o.address].filter(Boolean).join('، ')||'—'}</td><td className="tracking-order-detail">{o.items.map(i=>i.name+' × '+number(i.quantity)).join('، ')}</td><td className="numeric-value">{dateEN(o.createdAt)}</td><td className="numeric-value">{formatEntryDate(o.enteredAt||o.createdAt)}</td><td className="order-actions"><div className="links">{canPrepareShipment(o)&&<button className="btn tiny secondary" title={t("تجهيز ملف الشحن")} aria-label={t("تجهيز ملف الشحن")} onClick={()=>openShippingIntegration(o.shippingCompany,[o])}><Truck size={15}/></button>}<a className="btn tiny secondary" title={t("طباعة فاتورة PDF")} href={'/orders/'+o.id+'/invoice'} target="_blank" rel="noopener noreferrer"><FileText size={15}/></a><button className="btn tiny secondary" title={t("طباعة البوليصة")} onClick={()=>preview([o])}><Printer size={15}/>{t("طباعة")}</button><button className="btn tiny secondary" title={t("تعديل")} onClick={()=>{setErr('');setEditing({...o})}}><Pencil size={15}/></button>{o.status!=='confirmed'&&<button className="btn tiny secondary" title={t("تأكيد الطلب")} disabled={busy} onClick={()=>updateOrders([o],'confirmed')}><CheckCircle2 size={15}/></button>}{o.status!=='cancelled'&&<button className="btn tiny secondary" title={t("إلغاء الطلب")} disabled={busy} onClick={()=>updateOrders([o],'cancelled')}><XCircle size={15}/></button>}<button className="btn tiny danger" title={t("حذف")} disabled={busy} onClick={()=>updateOrders([o],'delete')}><Trash2 size={15}/></button></div></td></tr>)}</tbody></table>{rows.length===0&&<div className="empty">{!loaded?t("جاري تحميل البيانات…"):t("مفيش أوردرات مطابقة حالياً. اضغط إضافة أوردر للبدء.")}</div>}</div>}
