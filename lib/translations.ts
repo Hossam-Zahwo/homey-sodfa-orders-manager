@@ -5,6 +5,8 @@ export const english: Readonly<Record<string, string>> = {
   "المبلغ قيد التحصيل حسب تالا": "Pending collection per Tala",
   "رسوم تالا المحصلة": "Tala fees collected",
   "آخر حالة مزامنة من تالا": "Latest status synced from Tala",
+  "المستحق حسب تالا": "Due amount reported by Tala",
+  "تعذّر حفظ منطقة تالا ضمن بيانات العنوان. راجع المحافظة وحاول تاني.": "Could not save the Tala area under this governorate. Check the governorate and try again.",
   "الحالة عند تالا": "Tala status",
   "جاري قراءة حالة تالا…": "Reading Tala status…",
   "حالة تالا غير متاحة حاليًا": "Tala status is currently unavailable",
