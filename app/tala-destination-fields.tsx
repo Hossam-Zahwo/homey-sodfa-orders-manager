@@ -14,7 +14,7 @@ function exactOption(options:TalaOption[],name:string){
  return matches.length===1?String(matches[0].id):'';
 }
 
-export function TalaDestinationFields({governorate,city,retryOrder=false,price,onRateChange}:{governorate:string;city:string;retryOrder?:boolean;price:number;onRateChange:(rate:number)=>void}){
+export function TalaDestinationFields({governorate,city,retryOrder=false,price,onRateChange,onAreaSelected}:{governorate:string;city:string;retryOrder?:boolean;price:number;onRateChange:(rate:number)=>void;onAreaSelected?:(area:string)=>void|Promise<void>}){
  const {language}=useLanguage();
  const [service,setService]=useState('');
  const [zone,setZone]=useState('');
@@ -30,7 +30,9 @@ export function TalaDestinationFields({governorate,city,retryOrder=false,price,o
  const [feeLoading,setFeeLoading]=useState(false);
  const [feeFailed,setFeeFailed]=useState(false);
  const rateChangeRef=useRef(onRateChange);
+ const areaSelectedRef=useRef(onAreaSelected);
  rateChangeRef.current=onRateChange;
+ areaSelectedRef.current=onAreaSelected;
  const label=(ar:string,en:string)=>language==='ar'?ar:en;
 
  useEffect(()=>{
@@ -47,7 +49,11 @@ export function TalaDestinationFields({governorate,city,retryOrder=false,price,o
   setFailed(false);setLoading(true);
   const load=zone?request('subzones',Number(zone)).then(list=>{
    if(controller.signal.aborted)return;
-   setSubzones(list);setSubzone(current=>current||exactOption(list,city));
+   setSubzones(list);
+   const matched=exactOption(list,city);
+   setSubzone(current=>current||matched);
+   const area=list.find(item=>String(item.id)===(matched||subzone));
+   if(area)void areaSelectedRef.current?.(area.name);
   }):service?request('zones',Number(service)).then(list=>{
    if(controller.signal.aborted)return;
    setZones(list);setZone(current=>current||exactOption(list,governorate));
@@ -90,7 +96,7 @@ export function TalaDestinationFields({governorate,city,retryOrder=false,price,o
      {zones.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
     </select></label>
    <label>{label('المنطقة الفرعية عند تالا','Tala subzone')}
-    <select className="field" name="talaSubzone" required value={subzone} onChange={event=>{setSubzone(event.target.value);setFee(null)}}>
+    <select className="field" name="talaSubzone" required value={subzone} onChange={event=>{setSubzone(event.target.value);setFee(null);const area=subzones.find(item=>String(item.id)===event.target.value);if(area)void areaSelectedRef.current?.(area.name)}}>
      <option value="">{label('اختار المنطقة الفرعية','Select a subzone')}</option>
      {subzones.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
     </select></label>
