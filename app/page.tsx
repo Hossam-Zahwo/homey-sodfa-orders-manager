@@ -458,7 +458,7 @@ export default function Page(){
      </label>
      {numOrder('shipping',t("تكلفة الشحن"))}
      {(!editing.id||canRetryTala)&&editing.brand==='homey'&&editing.shippingCompany===talaExpress&&!closedWithoutDelivery(editing)&&editing.status!=='delivered'&&
-      <TalaDestinationFields key={editing.governorate+':'+editing.city} governorate={editing.governorate} city={editing.city} retryOrder={canRetryTala}/>}
+      <TalaDestinationFields key={editing.governorate+':'+editing.city} governorate={editing.governorate} city={editing.city} retryOrder={canRetryTala} price={Math.max(0,totalOf(editing)-editing.shipping-editing.prepaid)} onRateChange={rate=>setEditing(order=>order?{...order,shipping:rate}:order)}/>}
 
      {editing.shippingCompany===talaExpress&&editing.city&&talaRate(talaExpress,editing.governorate,editing.city)===undefined&&
       <small className="full muted">{t("سعر تالا للمنطقة دي محتاج تأكيد. اكتب تكلفة الشحن يدويًا.")}</small>}
