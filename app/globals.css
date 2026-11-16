@@ -724,3 +724,35 @@ button.tracking-card:hover { border-color: currentColor; }
 .tala-finance-fees{background:#f3edff}
 @media(max-width:700px){.tala-status-badge{font-size:.66rem;margin-inline-start:.25rem}}
 .tala-finance-due{background:#e9f4f4}
+
+
+/* Focused order entry: progressive carrier selection and mobile-first spacing */
+.order-editor form{display:flex;flex-direction:column;gap:12px}
+.order-carrier-choice{position:sticky;top:-1px;z-index:4;margin:0;padding:14px 18px;background:linear-gradient(135deg,#f2f7ed,#fff);border:1px solid #dce8d5;border-radius:15px;box-shadow:0 8px 20px #233d2410}
+.order-carrier-choice .editor-section-title{margin:0 0 10px;padding:0;border:0;font-size:15px}
+.order-carrier-choice label{display:grid;grid-template-columns:minmax(120px,180px) minmax(0,1fr);align-items:center;gap:14px;max-width:660px;font-size:13px;font-weight:750;color:#344d36}
+.order-carrier-choice .field{min-height:46px;font-size:14px;font-weight:650}
+.order-carrier-hint{margin:2px 0 0;text-align:center}
+.order-editor .order-form-section:not(.order-carrier-choice){padding:4px 5px 14px;border-bottom:1px solid #edf1e9}
+.order-editor .editor-section-title{margin-top:10px}
+.order-editor .tala-destination{margin-top:8px;padding:17px;border:1px solid #dfe9da;border-radius:14px;background:#fbfdf9}
+.order-editor .tala-destination legend{padding:0 7px;font-weight:800;color:#385b38}
+.order-editor .tala-destination .formgrid{margin-top:7px}
+.order-editor .order-product-row{align-items:end;padding:12px;border:1px solid #edf1e9;border-radius:13px;background:#fbfcfa}
+.order-editor .order-payment-section{border-bottom:0!important}
+.order-editor .modalfooter{position:sticky;bottom:-20px;z-index:3;background:#fff;padding:15px 0 2px}
+@media(max-width:760px){
+ .order-editor{width:100%;max-height:calc(100dvh - 12px);padding:14px}
+ .order-editor .sectionhead h2{font-size:19px}
+ .order-carrier-choice{top:-1px;padding:12px;border-radius:12px}
+ .order-carrier-choice label{grid-template-columns:1fr;gap:7px}
+ .order-editor .tala-destination{padding:12px}
+ .order-editor .modalfooter{bottom:-14px}
+}
+@media(max-width:420px){
+ .order-editor .sectionhead{gap:8px}
+ .order-brand-chip{padding:5px 8px}
+ .order-editor .editor-total{padding:14px}
+ .order-editor .modalfooter{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+ .order-editor .modalfooter .btn{white-space:normal}
+}
