@@ -108,7 +108,7 @@ export async function POST(request: Request) {
  }
  const days=body.days===7||body.days===90?body.days:30;
  const variables=operation==='shipments'?{page,input:{date:talaShipmentDateRange(new Date(),days)}}
-  :operation==='services'?{}:operation==='tracking'?{code}:operation==='fees'?{input:{serviceId:fee.serviceId,recipientZoneId:fee.zoneId,recipientSubzoneId:fee.subzoneId,weight:fee.weight,price:fee.price,priceTypeCode:'INCLD',paymentTypeCode:fee.price>0?'COLC':'PAID'}}:{id};
+  :operation==='services'?{}:operation==='tracking'?{code}:operation==='fees'?{input:{serviceId:fee.serviceId,recipientZoneId:fee.zoneId,recipientSubzoneId:fee.subzoneId,weight:fee.weight,price:fee.price,priceTypeCode:'EXCLD',paymentTypeCode:fee.price>0?'COLC':'PAID'}}:{id};
  type Data = {listShippingServicesDropdown?:TalaOption[];listZonesDropdown?:TalaOption[];shipment?:TalaTracking|null;
   listShipments?:{paginatorInfo:{hasMorePages:boolean};data:TalaShipmentSummary[]};
   calculateShipmentFees?:{amount:number;delivery:number;weight:number;collection:number;post:number|null;tax:number|null;return:number;total:number}};
