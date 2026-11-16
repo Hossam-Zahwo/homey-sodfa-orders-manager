@@ -229,12 +229,14 @@ export default function Page(){
    collected:sum.collected+(order.talaCollectedAmount??0),
    pending:sum.pending+(order.talaPendingCollectionAmount??0),
    fees:sum.fees+(order.talaCollectedFees??0),
-  }),{delivery:0,collected:0,pending:0,fees:0});
+   due:sum.due+(order.talaCustomerDue??0),
+  }),{delivery:0,collected:0,pending:0,fees:0,due:0});
   return <><h3>{t("المبالغ المسجلة في تالا")}</h3><div className="tracking-grid tracking-finance tala-finance-grid">
    <div className="tracking-card tala-finance-delivery"><span>{t("رسوم الشحن حسب تالا")}</span><strong>{money(amounts.delivery)}</strong></div>
    <div className="tracking-card tala-finance-collected"><span>{t("المبلغ المحصل حسب تالا")}</span><strong>{money(amounts.collected)}</strong></div>
    <div className="tracking-card tala-finance-pending"><span>{t("المبلغ قيد التحصيل حسب تالا")}</span><strong>{money(amounts.pending)}</strong></div>
    <div className="tracking-card tala-finance-fees"><span>{t("رسوم تالا المحصلة")}</span><strong>{money(amounts.fees)}</strong></div>
+   <div className="tracking-card tala-finance-due"><span>{t("المستحق حسب تالا")}</span><strong>{money(amounts.due)}</strong></div>
   </div></>;
  }
  function salesSummary(rows:Order[]){
