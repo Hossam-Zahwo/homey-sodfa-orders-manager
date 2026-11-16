@@ -1,4 +1,10 @@
 export const english: Readonly<Record<string, string>> = {
+  "المبالغ المسجلة في تالا": "Amounts reported by Tala",
+  "رسوم الشحن حسب تالا": "Shipping fees reported by Tala",
+  "المبلغ المحصل حسب تالا": "Amount collected per Tala",
+  "المبلغ قيد التحصيل حسب تالا": "Pending collection per Tala",
+  "رسوم تالا المحصلة": "Tala fees collected",
+  "آخر حالة مزامنة من تالا": "Latest status synced from Tala",
   "الحالة عند تالا": "Tala status",
   "جاري قراءة حالة تالا…": "Reading Tala status…",
   "حالة تالا غير متاحة حاليًا": "Tala status is currently unavailable",
