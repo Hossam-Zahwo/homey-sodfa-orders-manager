@@ -723,3 +723,4 @@ button.tracking-card:hover { border-color: currentColor; }
 .tala-finance-pending{background:#fff5dc}
 .tala-finance-fees{background:#f3edff}
 @media(max-width:700px){.tala-status-badge{font-size:.66rem;margin-inline-start:.25rem}}
+.tala-finance-due{background:#e9f4f4}
