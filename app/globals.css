@@ -710,3 +710,16 @@ button.tracking-card:hover { border-color: currentColor; }
 @media (max-width: 760px) {
  [dir="ltr"] .app .sidebar { right: auto; left: 0; }
 }
+
+.tala-status-badge{display:inline-flex;align-items:center;margin-inline-start:.45rem;padding:.18rem .5rem;border-radius:999px;font-size:.72rem;font-weight:700;line-height:1.4;vertical-align:middle;background:#edf1f5;color:#344054}
+.tala-status-dtr{background:#e7f5ec;color:#146c3a}
+.tala-status-rtrn,.tala-status-rts,.tala-status-rcv,.tala-status-otr{background:#fff0e5;color:#9a3412}
+.tala-status-rjct{background:#fde8e8;color:#a61b1b}
+.tala-status-dex,.tala-status-htr,.tala-status-pkh{background:#fff7d6;color:#825b00}
+.tala-status-pkr,.tala-status-pkm,.tala-status-pkd,.tala-status-rits,.tala-status-prp,.tala-status-prpd,.tala-status-bmt,.tala-status-bmr,.tala-status-std,.tala-status-otd{background:#e8f0ff;color:#234b9b}
+.tala-finance-grid .tracking-card{min-height:88px}
+.tala-finance-delivery{background:#eef4ff}
+.tala-finance-collected{background:#e9f7ee}
+.tala-finance-pending{background:#fff5dc}
+.tala-finance-fees{background:#f3edff}
+@media(max-width:700px){.tala-status-badge{font-size:.66rem;margin-inline-start:.25rem}}
