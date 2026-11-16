@@ -195,6 +195,7 @@ export function TalaDestinationFields({governorate,city,locations,retryOrder=fal
     }}><option value="">{areasLoading?label('جاري تحميل المناطق…','Loading areas…'):label('اختار المنطقة','Select an area')}</option>
      {areas.map(item=><option key={item.key} value={item.key}>{item.label}</option>)}
     </select></label>
+   <input type="hidden" name="talaAreaName" value={selectedArea?.storedName??''}/>
    <input type="hidden" name="talaZone" value={selectedArea?.zoneId??''}/>
    <input type="hidden" name="talaSubzone" value={selectedArea?.subzoneId??''}/>
   </div>
