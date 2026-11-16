@@ -111,7 +111,7 @@ export function TalaDestinationFields({governorate,city,retryOrder=false,price,o
    try{
     const response=await fetch('/api/shipping-integrations/tala',{
      method:'POST',headers:{'Content-Type':'application/json'},
-     body:JSON.stringify({brand:'homey',operation:'subzones',language,id:Number(zoneId)}),signal:controller.signal,
+     body:JSON.stringify({brand:'homey',operation:'subzones',language,id:Number(zoneId),serviceId:Number(service)}),signal:controller.signal,
     });
     if(!response.ok)throw new Error();
     const result=await response.json();
