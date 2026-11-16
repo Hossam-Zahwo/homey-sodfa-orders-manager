@@ -3,7 +3,7 @@ import {requireAccess} from '@/lib/access';
 import {getOrders,saveOrder,removeOrder,audit,addOrderLocality} from '@/lib/database';
 import {statuses,type Order} from '@/lib/types';
 import {talaExpress} from '@/lib/tala-shipping';
-import {dispatchTalaOrder,parseTalaDestination,prepareTalaDispatch} from '@/lib/tala-dispatch';
+import {dispatchTalaOrder,keepTalaRequestForReview,parseTalaDestination,prepareTalaDispatch} from '@/lib/tala-dispatch';
 import {closedWithoutDelivery} from '@/lib/carrier-tracking';
 export const maxDuration=45;
 export const runtime='nodejs';export const dynamic='force-dynamic';
@@ -44,17 +44,22 @@ export async function POST(r:Request){
   if(error)return NextResponse.json({error},{status:400});
   const creationRequestId=!o.id&&typeof o.creationRequestId==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(o.creationRequestId)?o.creationRequestId:undefined;
   const retry=Boolean(o.id&&o.retryTala===true);
-  let dispatch;
-  if((!o.id||retry)&&o.brand==='homey'&&o.shippingCompany===talaExpress&&!closedWithoutDelivery(o)&&o.status!=='delivered'){
-   const destination=parseTalaDestination(o.talaDestination);
-   if(!destination||typeof o.address!=='string'||!o.address.trim()||typeof o.city!=='string'||o.city.trim().length<2)return NextResponse.json({error:'اختار منطقة تالا واكتب العنوان بالتفصيل.'},{status:400});
-   try{dispatch=await prepareTalaDispatch(destination)}
-   catch{return NextResponse.json({error:'تعذّر تجهيز الإرسال لتالا. راجع الاتصال والخدمة والمنطقة.'},{status:503})}
-  }
-  if(dispatch&&!await addOrderLocality(o.governorate,o.city.trim()))return NextResponse.json({error:'راجع المحافظة والمنطقة المختارتين لتالا.'},{status:400});
+  const shouldDispatch=(!o.id||retry)&&o.brand==='homey'&&o.shippingCompany===talaExpress&&!closedWithoutDelivery(o)&&o.status!=='delivered';
+  const destination=shouldDispatch?parseTalaDestination(o.talaDestination):null;
+  if(shouldDispatch&&(!destination||typeof o.address!=='string'||!o.address.trim()||typeof o.city!=='string'||o.city.trim().length<2))return NextResponse.json({error:'اختار منطقة تالا واكتب العنوان بالتفصيل.'},{status:400});
+  if(shouldDispatch&&destination&&!await addOrderLocality(o.governorate,o.city.trim()))return NextResponse.json({error:'راجع المحافظة والمنطقة المختارتين لتالا.'},{status:400});
   const saved=await saveOrder({...o,city:o.city.trim(),customerName:o.customerName.trim(),phone:normalizePhone(o.phone)},creationRequestId);
   await audit(o.id?'update':'create','order',saved.id,saved.brand,JSON.stringify({status:saved.status,shippingCompany:saved.shippingCompany,carrierReceived:saved.carrierReceived})).catch(console.error);
-  const tala=dispatch&&saved.shippingCompany===talaExpress&&!closedWithoutDelivery(saved)&&saved.status!=='delivered'?await dispatchTalaOrder(saved,dispatch,retry):undefined;
+  let tala;
+  if(shouldDispatch&&destination){
+   try{
+    const dispatch=await prepareTalaDispatch(destination);
+    tala=await dispatchTalaOrder(saved,dispatch,retry);
+   }catch{
+    await keepTalaRequestForReview(saved,destination).catch(console.error);
+    tala={state:'unavailable' as const};
+   }
+  }
   return NextResponse.json({data:saved,tala});
  }catch(e){return replyError(e)}
 }
