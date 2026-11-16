@@ -20,10 +20,10 @@ export async function graphql<T>(endpoint:string,query: string, variables: objec
  if (!response.ok) throw new TalaError('unreachable');
  const result = await response.json().catch(() => null);
  const errors:Array<{message?:string;extensions?:{code?:string}}> = Array.isArray(result?.errors)?result.errors:[];
- if (errors.some(error=>error.extensions?.code==='UNAUTHENTICATED'||/^Unauthenticated\\.?$/i.test(error.message??''))) {
+ if (errors.some(error=>error.extensions?.code==='UNAUTHENTICATED'||/^Unauthenticated\.?$/i.test(error.message??''))) {
   throw new TalaError('unauthenticated');
  }
- if (errors.some(error=>['FORBIDDEN','ACCESS_DENIED','UNAUTHORIZED'].includes(error.extensions?.code??'')||/^This action is unauthorized\\.?$/i.test(error.message??''))) {
+ if (errors.some(error=>['FORBIDDEN','ACCESS_DENIED','UNAUTHORIZED'].includes(error.extensions?.code??'')||/^This action is unauthorized\.?$/i.test(error.message??''))) {
   throw new TalaError('forbidden');
  }
  if (errors.length || !result?.data) throw new TalaError('rejected');
