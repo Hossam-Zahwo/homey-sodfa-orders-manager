@@ -100,7 +100,11 @@ export function TalaShipments({brand,revision,orderIds,openOrder,trackingOrders,
    </div>
   </div>
   {error&&<p className="notice error" role="alert">{error==='missing_credentials'?label('ضيف حساب تالا الأول.','Add your Tala account first.')
-   :label('تعذّر قراءة شحنات تالا. راجع صلاحيات الحساب أو أعد المحاولة.','Could not load Tala shipments. Check account access or try again.')}
+   :error==='unauthenticated'?label('بيانات دخول تالا غير مقبولة. راجع اسم المستخدم وكلمة المرور من إعدادات الربط.','Tala login was rejected. Check the username and password in integration settings.')
+   :error==='forbidden'?label('حساب تالا لا يملك صلاحية قراءة قائمة الشحنات. اطلب من تالا تفعيل صلاحية عرض الشحنات (listShipments).','This Tala account cannot read the shipment list. Ask Tala to enable the listShipments permission.')
+   :error==='rejected'?label('تالا رفضت طلب قراءة الشحنات. حدّث الصفحة، ولو استمرت المشكلة أرسل رمز الخطأ للدعم.','Tala rejected the shipment query. Refresh, and send the error code to support if it continues.')
+   :error==='unreachable'?label('تعذّر الاتصال بخدمة تالا. حاول التحديث بعد قليل.','Could not connect to Tala. Try refreshing shortly.')
+   :label('تعذّر قراءة شحنات تالا. راجع إعدادات الربط أو أعد المحاولة.','Could not load Tala shipments. Check the integration settings or try again.')}
    {snapshot&&<> {label('ظاهر آخر تحديث ناجح.','Showing the last successful refresh.')}</>}</p>}
   {snapshot&&<>
    {snapshot.partial&&<p className="notice" role="status">{label('النتائج المعروضة جزئية لأن القائمة تخطّت حد الجلب.','The shipment list exceeded the fetch limit. Counts are partial.')}</p>}
