@@ -14,7 +14,7 @@ function exactOption(options:TalaOption[],name:string){
  return matches.length===1?String(matches[0].id):'';
 }
 
-export function TalaDestinationFields({governorate,city,retryOrder=false,price,onRateChange,onAreaSelected}:{governorate:string;city:string;retryOrder?:boolean;price:number;onRateChange:(rate:number)=>void;onAreaSelected?:(area:string)=>void|Promise<void>}){
+export function TalaDestinationFields({governorate,city,retryOrder=false,price,onRateChange,onZoneSelected,onAreaSelected}:{governorate:string;city:string;retryOrder?:boolean;price:number;onRateChange:(rate:number)=>void;onZoneSelected?:(zone:string)=>void|Promise<void>;onAreaSelected?:(area:string)=>void|Promise<void>}){
  const {language}=useLanguage();
  const [service,setService]=useState('');
  const [zone,setZone]=useState('');
@@ -30,8 +30,10 @@ export function TalaDestinationFields({governorate,city,retryOrder=false,price,o
  const [feeLoading,setFeeLoading]=useState(false);
  const [feeFailed,setFeeFailed]=useState(false);
  const rateChangeRef=useRef(onRateChange);
+ const zoneSelectedRef=useRef(onZoneSelected);
  const areaSelectedRef=useRef(onAreaSelected);
  rateChangeRef.current=onRateChange;
+ zoneSelectedRef.current=onZoneSelected;
  areaSelectedRef.current=onAreaSelected;
  const label=(ar:string,en:string)=>language==='ar'?ar:en;
 
@@ -89,10 +91,13 @@ export function TalaDestinationFields({governorate,city,retryOrder=false,price,o
     }}><option value="">{label('اختار الخدمة','Select a service')}</option>
      {services.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
     </select></label>
-   <label>{label('المنطقة عند تالا','Tala zone')}
+   <label>{label('المحافظة / المنطقة الرئيسية عند تالا','Tala governorate / main zone')}
     <select className="field" name="talaZone" required value={zone} onChange={event=>{
-     setZone(event.target.value);setSubzone('');setSubzones([]);setFee(null);
-    }}><option value="">{label('اختار المنطقة','Select a zone')}</option>
+     const value=event.target.value;
+     setZone(value);setSubzone('');setSubzones([]);setFee(null);
+     const selected=zones.find(item=>String(item.id)===value);
+     if(selected)void Promise.resolve(zoneSelectedRef.current?.(selected.name)).catch(()=>setZone(''));
+    }}><option value="">{label('اختار المحافظة','Select a governorate')}</option>
      {zones.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
     </select></label>
    <label>{label('المنطقة الفرعية عند تالا','Tala subzone')}
