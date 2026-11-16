@@ -12,6 +12,7 @@ const queries = {
  services: 'query Services { listShippingServicesDropdown(input: { active: true }) { id name } }',
  zones: 'query Zones($id: Int!) { listZonesDropdown(input: { active: true, service: { serviceId: $id } }) { id name } }',
  subzones: 'query Subzones($id: Int!) { listZonesDropdown(input: { active: true, parentId: $id }) { id name } }',
+ fees: 'query Fees($input: CalculateShipmentFeesInput!) { calculateShipmentFees(input: $input) { amount delivery weight collection post tax return total } }',
  shipments: 'query Shipments($input: ListShipmentsFilterInput, $page: Int) { listShipments(input: $input, first: 100, page: $page) { paginatorInfo { hasMorePages } data { code refNumber date status { code name } recipientZone { name } recipientSubzone { name } service { name } price deliveryFees deliveredAmount } } }',
  tracking: 'query Track($code: String) { shipment(code: $code) { code refNumber status { code name } } }',
 };
@@ -90,22 +91,27 @@ export async function POST(request: Request) {
  const id=body.id;
  const code=typeof body.code==='string'?body.code.trim():'';
  const language=body.language==='en'?'en':'ar';
- if (operation!=='services' && operation!=='zones' && operation!=='subzones' && operation!=='tracking' && operation!=='shipments') {
+ if (operation!=='services' && operation!=='zones' && operation!=='subzones' && operation!=='tracking' && operation!=='shipments' && operation!=='fees') {
   return NextResponse.json({error:'invalid'},{status:400});
  }
  if ((operation==='zones'||operation==='subzones') && (!Number.isSafeInteger(id)||id<1||id>2147483647)) {
   return NextResponse.json({error:'invalid'},{status:400});
  }
  if (operation==='tracking' && (!code||code.length>100)) return NextResponse.json({error:'invalid'},{status:400});
+ const fee=body.fees;
+ if(operation==='fees'&&(!fee||!Number.isSafeInteger(fee.serviceId)||fee.serviceId<1||fee.serviceId>2147483647||!Number.isSafeInteger(fee.zoneId)||fee.zoneId<1||fee.zoneId>2147483647||!Number.isSafeInteger(fee.subzoneId)||fee.subzoneId<1||fee.subzoneId>2147483647||typeof fee.weight!=='number'||!Number.isFinite(fee.weight)||fee.weight<=0||fee.weight>1000||typeof fee.price!=='number'||!Number.isFinite(fee.price)||fee.price<0||fee.price>999999999999.99)){
+  return NextResponse.json({error:'invalid'},{status:400});
+ }
  const page:unknown=body.page;
  if(operation==='shipments'&&(typeof page!=='number'||!Number.isSafeInteger(page)||page<1||page>50)){
   return NextResponse.json({error:'invalid'},{status:400});
  }
  const days=body.days===7||body.days===90?body.days:30;
  const variables=operation==='shipments'?{page,input:{date:talaShipmentDateRange(new Date(),days)}}
-  :operation==='services'?{}:operation==='tracking'?{code}:{id};
+  :operation==='services'?{}:operation==='tracking'?{code}:operation==='fees'?{input:{serviceId:fee.serviceId,recipientZoneId:fee.zoneId,recipientSubzoneId:fee.subzoneId,weight:fee.weight,price:fee.price,priceTypeCode:'INCLD',paymentTypeCode:fee.price>0?'COLC':'PAID'}}:{id};
  type Data = {listShippingServicesDropdown?:TalaOption[];listZonesDropdown?:TalaOption[];shipment?:TalaTracking|null;
-  listShipments?:{paginatorInfo:{hasMorePages:boolean};data:TalaShipmentSummary[]}};
+  listShipments?:{paginatorInfo:{hasMorePages:boolean};data:TalaShipmentSummary[]};
+  calculateShipmentFees?:{amount:number;delivery:number;weight:number;collection:number;post:number|null;tax:number|null;return:number;total:number}};
  try {
   const {input,endpoint,revision}=await readTalaSettings(brand as Brand);
   if(!input)return NextResponse.json({error:'missing_credentials'},{status:409});
@@ -119,6 +125,11 @@ export async function POST(request: Request) {
    invalidateTalaToken(cacheKey,token);
    token=await login(cacheKey,endpoint,input);
    data=await graphql<Data>(endpoint,queries[operation],variables,language,token);
+  }
+  if(operation==='fees'){
+   const fees=data.calculateShipmentFees;
+   if(!fees||!Number.isFinite(fees.total)||fees.total<0)throw new TalaError('rejected');
+   return NextResponse.json({data:fees},{headers:{'Cache-Control':'no-store'}});
   }
   if(operation==='shipments'){
    const result=data.listShipments;
