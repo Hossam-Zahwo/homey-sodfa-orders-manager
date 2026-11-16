@@ -56,12 +56,14 @@ export function TalaDestinationFields({governorate,city,locations,retryOrder=fal
  areaSelectedRef.current=onAreaSelected;
  const label=(ar:string,en:string)=>language==='ar'?ar:en;
  const selectedArea=areas.find(item=>item.key===subzone);
- const supportedZones=serviceZones.filter(item=>zoneGovernorates(item.name,locations).includes(governorate));
+ const directGovernorateZones=serviceZones.filter(item=>matchName(item.name)===matchName(governorate));
+ const localityZones=directGovernorateZones.length?[]:serviceZones.filter(item=>zoneGovernorates(item.name,locations).includes(governorate));
+ const supportedZones=directGovernorateZones.length?directGovernorateZones:localityZones;
 
  async function request(operation:string,id?:number,serviceId?:number,signal?:AbortSignal){
   const response=await fetch('/api/shipping-integrations/tala',{
    method:'POST',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({brand:'homey',operation,language,id,...(serviceId?{serviceId}:{})}),signal,
+   body:JSON.stringify({brand:'homey',operation,language:(operation==='zones'||operation==='subzones')?'ar':language,id,...(serviceId?{serviceId}:{})}),signal,
   });
   if(!response.ok)throw new Error();
   const result=await response.json();
@@ -120,7 +122,7 @@ export function TalaDestinationFields({governorate,city,locations,retryOrder=fal
     const found:TalaArea[]=[];
     for(let offset=0;offset<roots.length;offset+=5){
      const batch=roots.slice(offset,offset+5);
-     const lists=await Promise.all(batch.map(root=>request('subzones',Number(root.id),Number(service),controller.signal)));
+     const lists=await Promise.all(batch.map(root=>request('subzones',Number(root.id),undefined,controller.signal)));
      if(controller.signal.aborted||requestId!==areaRequestId.current)return;
      for(let index=0;index<batch.length;index++){
       const root=batch[index];
