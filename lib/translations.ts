@@ -1,6 +1,5 @@
 export const english: Readonly<Record<string, string>> = {
   "اختار شركة الشحن أولاً": "Choose a shipping company first",
-  "اختار المحافظة": "Choose a governorate",
   "المحافظة اللي رجعتها تالا مش موجودة ضمن المحافظات المحفوظة.": "The governorate returned by Tala is not in the saved governorates.",
   "المبالغ المسجلة في تالا": "Amounts reported by Tala",
   "رسوم الشحن حسب تالا": "Shipping fees reported by Tala",
