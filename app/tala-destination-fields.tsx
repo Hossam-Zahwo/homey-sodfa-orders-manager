@@ -51,8 +51,8 @@ export function TalaDestinationFields({governorate,city,retryOrder=false,price,o
    if(controller.signal.aborted)return;
    setSubzones(list);
    const matched=exactOption(list,city);
-   setSubzone(current=>current||matched);
-   const area=list.find(item=>String(item.id)===(matched||subzone));
+   setSubzone(matched);
+   const area=matched?list.find(item=>String(item.id)===matched):undefined;
    if(area)void areaSelectedRef.current?.(area.name);
   }):service?request('zones',Number(service)).then(list=>{
    if(controller.signal.aborted)return;
