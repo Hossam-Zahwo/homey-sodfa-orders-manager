@@ -44,12 +44,23 @@ export async function dispatchTalaOrder(order:Order,config:Awaited<ReturnType<ty
  if(!url)return {state:'unavailable'};
  const sql=neon(url);
  const {endpoint,token,destination}=config;
+ const price=collectionFromCustomer(order);
+ const requestPayload={
+  serviceId:destination.serviceId,recipientZoneId:destination.zoneId,recipientSubzoneId:destination.subzoneId,
+  weight:destination.weight,piecesCount:destination.piecesCount,typeCode:destination.typeCode,openableCode:destination.openableCode,
+  refNumber:order.id,recipientName:order.customerName,recipientMobile:order.phone,
+  ...(order.alternatePhone?{recipientPhone:order.alternatePhone}:{}),
+  recipientAddress:order.address.trim(),price,priceTypeCode:'INCLD',paymentTypeCode:price>0?'COLC':'PAID',
+  description:order.items.map(item=>item.name+' × '+item.quantity).join(', ').slice(0,240),
+  ...(order.notes?{notes:order.notes.slice(0,2000)}:{}),
+ };
  async function markSent(shipment:{id:number;code:string}){
   await sql`UPDATE public.tala_order_shipments SET state='sent',tracking_code=${shipment.code},external_id=${shipment.id},
    updated_at=now() WHERE order_id=${order.id}::uuid`;
   return {state:'sent',trackingCode:shipment.code} as const;
  }
  try{
+  await sql`ALTER TABLE public.tala_order_shipments ADD COLUMN IF NOT EXISTS request_data jsonb NOT NULL DEFAULT '{}'::jsonb`;
   if(retry){
    const [existing]=await sql`SELECT state,tracking_code FROM public.tala_order_shipments WHERE order_id=${order.id}::uuid`;
    if(existing?.state==='sent'&&existing.tracking_code)return {state:'sent',trackingCode:String(existing.tracking_code)};
@@ -73,10 +84,10 @@ export async function dispatchTalaOrder(order:Order,config:Awaited<ReturnType<ty
     recent.data.some(shipment=>shipment.recipientMobile&&localPhone(shipment.recipientMobile)===localPhone(order.phone)))return {state:'review'};
   }
   const claim=retry
-   ?await sql`UPDATE public.tala_order_shipments SET state='sending',updated_at=now()
+   ?await sql`UPDATE public.tala_order_shipments SET state='sending',request_data=${JSON.stringify(requestPayload)}::jsonb,updated_at=now()
     WHERE order_id=${order.id}::uuid AND state='review' AND tracking_code IS NULL AND updated_at<now()-interval '2 minutes'
     RETURNING order_id`
-   :await sql`INSERT INTO public.tala_order_shipments(order_id,state) VALUES (${order.id}::uuid,'sending')
+   :await sql`INSERT INTO public.tala_order_shipments(order_id,state,request_data) VALUES (${order.id}::uuid,'sending',${JSON.stringify(requestPayload)}::jsonb)
    ON CONFLICT(order_id) DO NOTHING RETURNING order_id`;
   if(!claim.length){
    const [existing]=await sql`SELECT state,tracking_code FROM public.tala_order_shipments WHERE order_id=${order.id}::uuid`;
@@ -85,14 +96,7 @@ export async function dispatchTalaOrder(order:Order,config:Awaited<ReturnType<ty
  }catch{return {state:'unavailable'}}
 
  try{
-  const price=collectionFromCustomer(order);
-  const {saveShipment:shipment}=await graphql<{saveShipment:{id:number;code:string}|null}>(endpoint,createQuery,{input:{
-   serviceId:destination.serviceId,recipientZoneId:destination.zoneId,recipientSubzoneId:destination.subzoneId,
-   weight:destination.weight,piecesCount:destination.piecesCount,typeCode:destination.typeCode,openableCode:destination.openableCode,
-   refNumber:order.id,recipientName:order.customerName,recipientMobile:order.phone,
-   recipientAddress:order.address.trim(),price,priceTypeCode:'INCLD',paymentTypeCode:price>0?'COLC':'PAID',
-   description:order.items.map(item=>item.name+' × '+item.quantity).join(', ').slice(0,240),
-  }},'en',token);
+  const {saveShipment:shipment}=await graphql<{saveShipment:{id:number;code:string}|null}>(endpoint,createQuery,{input:requestPayload},'en',token);
   if(!shipment?.code||!Number.isSafeInteger(shipment.id))throw new Error('Missing tracking code');
   return await markSent(shipment);
  }catch{
