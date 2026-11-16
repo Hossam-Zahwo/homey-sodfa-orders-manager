@@ -39,21 +39,36 @@ export async function prepareTalaDispatch(destination:TalaDestination){
  return {endpoint,token,destination};
 }
 
+function buildRequestPayload(order:Order,destination:TalaDestination){
+ const price=collectionFromCustomer(order);
+ return {
+  serviceId:destination.serviceId,recipientZoneId:destination.zoneId,recipientSubzoneId:destination.subzoneId,
+  weight:destination.weight,piecesCount:destination.piecesCount,typeCode:destination.typeCode,openableCode:destination.openableCode,
+  refNumber:order.id,recipientName:order.customerName,recipientMobile:order.phone,
+  ...(order.alternatePhone?{recipientPhone:order.alternatePhone}:{}),
+  recipientAddress:order.address.trim(),price,priceTypeCode:'INCLD' as const,paymentTypeCode:price>0?'COLC' as const:'PAID' as const,
+  description:order.items.map(item=>item.name+' × '+item.quantity).join(', ').slice(0,240),
+  ...(order.notes?{notes:order.notes.slice(0,2000)}:{}),
+ };
+}
+
+export async function keepTalaRequestForReview(order:Order,destination:TalaDestination){
+ const url=process.env.DATABASE_URL;
+ if(!url)throw new Error('Database not configured');
+ const sql=neon(url);
+ await sql`ALTER TABLE public.tala_order_shipments ADD COLUMN IF NOT EXISTS request_data jsonb NOT NULL DEFAULT '{}'::jsonb`;
+ const payload=buildRequestPayload(order,destination);
+ await sql`INSERT INTO public.tala_order_shipments(order_id,state,request_data,updated_at)
+  VALUES (${order.id}::uuid,'review',${JSON.stringify(payload)}::jsonb,now()-interval '2 minutes')
+  ON CONFLICT(order_id) DO UPDATE SET request_data=EXCLUDED.request_data`;
+}
+
 export async function dispatchTalaOrder(order:Order,config:Awaited<ReturnType<typeof prepareTalaDispatch>>,retry=false):Promise<DispatchResult>{
  const url=process.env.DATABASE_URL;
  if(!url)return {state:'unavailable'};
  const sql=neon(url);
  const {endpoint,token,destination}=config;
- const price=collectionFromCustomer(order);
- const requestPayload={
-  serviceId:destination.serviceId,recipientZoneId:destination.zoneId,recipientSubzoneId:destination.subzoneId,
-  weight:destination.weight,piecesCount:destination.piecesCount,typeCode:destination.typeCode,openableCode:destination.openableCode,
-  refNumber:order.id,recipientName:order.customerName,recipientMobile:order.phone,
-  ...(order.alternatePhone?{recipientPhone:order.alternatePhone}:{}),
-  recipientAddress:order.address.trim(),price,priceTypeCode:'INCLD',paymentTypeCode:price>0?'COLC':'PAID',
-  description:order.items.map(item=>item.name+' × '+item.quantity).join(', ').slice(0,240),
-  ...(order.notes?{notes:order.notes.slice(0,2000)}:{}),
- };
+ const requestPayload=buildRequestPayload(order,destination);
  async function markSent(shipment:{id:number;code:string}){
   await sql`UPDATE public.tala_order_shipments SET state='sent',tracking_code=${shipment.code},external_id=${shipment.id},
    updated_at=now() WHERE order_id=${order.id}::uuid`;
