@@ -490,7 +490,7 @@ export default function Page(){
     <div className="formgrid order-basics">
      {inputOrder('customerName',t("اسم العميل"),true)}
      {inputOrder('phone',t("رقم التليفون"),true)}
-     {editing.shippingCompany===talaExpress&&(!editing.id||canRetryTala||(!closedWithoutDelivery(editing)&&editing.status!=='delivered'))?
+     {editing.brand==='homey'&&editing.shippingCompany===talaExpress&&(!editing.id||canRetryTala||(!closedWithoutDelivery(editing)&&editing.status!=='delivered'))?
       <TalaDestinationFields governorate={editing.governorate} city={editing.city} retryOrder={canRetryTala}
        price={Math.max(0,totalOf(editing)-editing.shipping-editing.prepaid)}
        onRateChange={rate=>setEditing(order=>order?{...order,shipping:rate}:order)}
