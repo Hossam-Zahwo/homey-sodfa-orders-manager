@@ -5,6 +5,7 @@ import {authenticate,getStaff} from '@/lib/staff-auth';
 import {allowedTalaEndpoint,readTalaSettings,writeTalaSettings,type TalaSettings} from '@/lib/tala-settings-store';
 import {graphql,login,TalaError,invalidateTalaToken} from '@/lib/tala-api';
 import type {Brand} from '@/lib/types';
+import {syncTalaOrders} from '@/lib/tala-sync';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
  const id=body.id;
  const code=typeof body.code==='string'?body.code.trim():'';
  const language=body.language==='en'?'en':'ar';
- if (operation!=='services' && operation!=='zones' && operation!=='subzones' && operation!=='tracking' && operation!=='shipments' && operation!=='fees') {
+ if (operation!=='services' && operation!=='zones' && operation!=='subzones' && operation!=='tracking' && operation!=='shipments' && operation!=='fees' && operation!=='sync-orders') {
   return NextResponse.json({error:'invalid'},{status:400});
  }
  if ((operation==='zones'||operation==='subzones') && (!Number.isSafeInteger(id)||id<1||id>2147483647)) {
@@ -101,6 +102,11 @@ export async function POST(request: Request) {
  const fee=body.fees;
  if(operation==='fees'&&(!fee||!Number.isSafeInteger(fee.serviceId)||fee.serviceId<1||fee.serviceId>2147483647||!Number.isSafeInteger(fee.zoneId)||fee.zoneId<1||fee.zoneId>2147483647||!Number.isSafeInteger(fee.subzoneId)||fee.subzoneId<1||fee.subzoneId>2147483647||typeof fee.weight!=='number'||!Number.isFinite(fee.weight)||fee.weight<=0||fee.weight>1000||typeof fee.price!=='number'||!Number.isFinite(fee.price)||fee.price<0||fee.price>999999999999.99)){
   return NextResponse.json({error:'invalid'},{status:400});
+ }
+ if(operation==='sync-orders'){
+  if(brand!=='homey')return NextResponse.json({error:'unsupported_brand'},{status:400});
+  try{return NextResponse.json({data:await syncTalaOrders()},{headers:{'Cache-Control':'no-store'}})}
+  catch{return NextResponse.json({error:'sync_unavailable'},{status:502})}
  }
  const page:unknown=body.page;
  if(operation==='shipments'&&(typeof page!=='number'||!Number.isSafeInteger(page)||page<1||page>50)){
