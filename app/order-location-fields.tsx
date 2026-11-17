@@ -2,6 +2,7 @@
 import {useTranslation} from '@/app/language';
 import {useEffect,useId,useRef,useState} from 'react';
 import {ChevronDown} from 'lucide-react';
+import {govs} from '@/lib/types';
 
 const searchable = (value: string) => value.normalize('NFKD')
  .replace(/\p{M}|ـ/gu, '').replace(/ى/g, 'ي').replace(/ة/g, 'ه').trim();
@@ -39,7 +40,7 @@ export function OrderLocationFields({locations, governorate, city, required, onC
   };
  },[open]);
  const popupId=useId();
- const governorates=Object.keys(locations).sort((a,b)=>a.localeCompare(b,'ar'));
+ const governorates=govs;
  const cities=locations[governorate]??[];
  const options=city&&!cities.includes(city)?[city,...cities]:cities;
  const matches=options.filter(name=>searchable(name).includes(searchable(query)));
