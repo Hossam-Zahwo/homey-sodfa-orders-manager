@@ -6,6 +6,7 @@ import {allowedTalaEndpoint,readTalaSettings,writeTalaSettings,type TalaSettings
 import {graphql,login,TalaError,invalidateTalaToken} from '@/lib/tala-api';
 import type {Brand} from '@/lib/types';
 import {syncTalaOrders} from '@/lib/tala-sync';
+import type {TalaCoverageGroup} from '@/lib/tala-coverage';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,29 @@ const queries = {
  shipments: 'query Shipments($input: ListShipmentsFilterInput, $page: Int) { listShipments(input: $input, first: 100, page: $page) { paginatorInfo { hasMorePages } data { code refNumber date status { code name } recipientZone { name } recipientSubzone { name } service { name } price deliveryFees deliveredAmount } } }',
  tracking: 'query Track($code: String) { shipment(code: $code) { code refNumber status { code name } } }',
 };
+const coverageCache=new Map<string,{expiresAt:number;groups:TalaCoverageGroup[]}>();
+
+async function fetchServiceCoverage(endpoint:string,token:string,serviceId:number,cacheKey:string){
+ const key=cacheKey+':coverage:'+serviceId;
+ const cached=coverageCache.get(key);
+ if(cached&&cached.expiresAt>Date.now())return cached.groups;
+ const zoneResult=await graphql<{listZonesDropdown?:TalaOption[]}>(endpoint,queries.zones,{id:serviceId},'ar',token);
+ const zones=(zoneResult.listZonesDropdown??[]).filter(item=>Number.isSafeInteger(item.id)&&item.id>0&&Boolean(item.name));
+ const groups:TalaCoverageGroup[]=[];
+ for(let offset=0;offset<zones.length;offset+=8){
+  const batch=zones.slice(offset,offset+8);
+  const responses=await Promise.all(batch.map(zone=>graphql<{listZonesDropdown?:TalaOption[]}>(
+   endpoint,queries.subzones,{id:zone.id},'ar',token,
+  )));
+  for(let index=0;index<batch.length;index++){
+   const subzones=(responses[index].listZonesDropdown??[])
+    .filter(item=>Number.isSafeInteger(item.id)&&item.id>0&&Boolean(item.name));
+   groups.push({zone:batch[index],subzones});
+  }
+ }
+ coverageCache.set(key,{expiresAt:Date.now()+5*60*1000,groups});
+ return groups;
+}
 function publicSettings(settings:TalaSettings){
  return {configured:Boolean(settings.input),username:settings.input?.username??'',endpoint:settings.endpoint,
   documentation:settings.documentation,support:settings.support,revision:settings.revision};
@@ -92,10 +116,10 @@ export async function POST(request: Request) {
  const id=body.id;
  const code=typeof body.code==='string'?body.code.trim():'';
  const language=body.language==='en'?'en':'ar';
- if (operation!=='services' && operation!=='zones' && operation!=='subzones' && operation!=='tracking' && operation!=='shipments' && operation!=='fees' && operation!=='sync-orders') {
+ if (operation!=='services' && operation!=='zones' && operation!=='subzones' && operation!=='coverage' && operation!=='tracking' && operation!=='shipments' && operation!=='fees' && operation!=='sync-orders') {
   return NextResponse.json({error:'invalid'},{status:400});
  }
- if ((operation==='zones'||operation==='subzones') && (!Number.isSafeInteger(id)||id<1||id>2147483647)) {
+ if ((operation==='zones'||operation==='subzones'||operation==='coverage') && (!Number.isSafeInteger(id)||id<1||id>2147483647)) {
   return NextResponse.json({error:'invalid'},{status:400});
  }
   if (operation==='tracking' && (!code||code.length>100)) return NextResponse.json({error:'invalid'},{status:400});
@@ -125,11 +149,22 @@ export async function POST(request: Request) {
   const cacheKey=brand+':'+revision;
   let token=await login(cacheKey,endpoint,input);
   let data: Data;
-  try { data=await graphql<Data>(endpoint,queries[operation],variables,language,token); }
+  try {
+   if(operation==='coverage'){
+    const groups=await fetchServiceCoverage(endpoint,token,Number(id),cacheKey);
+    return NextResponse.json({data:{serviceId:Number(id),groups}},{headers:{'Cache-Control':'no-store'}});
+   }
+   data=await graphql<Data>(endpoint,queries[operation],variables,language,token);
+  }
   catch (error) {
    if (!(error instanceof TalaError) || error.code!=='unauthenticated') throw error;
    invalidateTalaToken(cacheKey,token);
    token=await login(cacheKey,endpoint,input);
+   if(operation==='coverage'){
+    coverageCache.delete(cacheKey+':coverage:'+Number(id));
+    const groups=await fetchServiceCoverage(endpoint,token,Number(id),cacheKey);
+    return NextResponse.json({data:{serviceId:Number(id),groups}},{headers:{'Cache-Control':'no-store'}});
+   }
    data=await graphql<Data>(endpoint,queries[operation],variables,language,token);
   }
   if(operation==='fees'){
