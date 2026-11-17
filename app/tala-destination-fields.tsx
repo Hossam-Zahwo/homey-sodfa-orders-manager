@@ -5,11 +5,11 @@ import {useLanguage} from './language';
 import {govs} from '@/lib/types';
 import type {TalaOption} from '@/lib/tala-connection';
 
-const matchName=(value:string)=>value.normalize('NFKD').replace(/[\\p{M}ـ]/gu,'')
+const matchName=(value:string)=>value.normalize('NFKD').replace(/[\p{M}ـ]/gu,'')
  .replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').toLowerCase().trim()
- .replace(/^(?:محافظه|governorate)\\s*/,'')
- .replace(/^(?:مدينه|مركز|قسم|حي|حى|بندر)\\s*/,'')
- .replace(/^ال/,'').replace(/\\s+/g,' ');
+ .replace(/^(?:محافظه|governorate)\s*/,'')
+ .replace(/^(?:مدينه|مركز|قسم|حي|حى|بندر)\s*/,'')
+ .replace(/^ال/,'').replace(/\s+/g,' ');
 
 type TalaArea={
  key:string;
