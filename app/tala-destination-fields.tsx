@@ -6,7 +6,10 @@ import {govs} from '@/lib/types';
 import type {TalaOption} from '@/lib/tala-connection';
 
 const matchName=(value:string)=>value.normalize('NFKD').replace(/[\\p{M}ـ]/gu,'')
- .replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').toLowerCase().trim().replace(/\\s+/g,' ');
+ .replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').toLowerCase().trim()
+ .replace(/^(?:محافظه|governorate)\\s*/,'')
+ .replace(/^(?:مدينه|مركز|قسم|حي|حى|بندر)\\s*/,'')
+ .replace(/^ال/,'').replace(/\\s+/g,' ');
 
 type TalaArea={
  key:string;
@@ -57,8 +60,12 @@ export function TalaDestinationFields({governorate,city,locations,retryOrder=fal
  const label=(ar:string,en:string)=>language==='ar'?ar:en;
  const selectedArea=areas.find(item=>item.key===subzone);
  const directGovernorateZones=serviceZones.filter(item=>matchName(item.name)===matchName(governorate));
- const localityZones=directGovernorateZones.length?[]:serviceZones.filter(item=>zoneGovernorates(item.name,locations).includes(governorate));
- const supportedZones=directGovernorateZones.length?directGovernorateZones:localityZones;
+ const localityZones=serviceZones.filter(item=>{
+  if(directGovernorateZones.some(root=>root.id===item.id))return false;
+  const matches=zoneGovernorates(item.name,locations);
+  return matches.length===1&&matches[0]===governorate;
+ });
+ const supportedZones=[...directGovernorateZones,...localityZones];
 
  async function request(operation:string,id?:number,serviceId?:number,signal?:AbortSignal){
   const response=await fetch('/api/shipping-integrations/tala',{
