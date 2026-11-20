@@ -312,8 +312,8 @@ export default function Page(){
      if(next.shippingCompany!==order.shippingCompany||next.governorate!==order.governorate||next.city!==order.city){
       if(next.shippingCompany===talaExpress&&typeof action!=='string'&&action.shipping===undefined){
        const rate=talaRate(next.shippingCompany,next.governorate,next.city);
-       if(rate===undefined)throw new Error('سعر تالا للمنطقة دي محتاج تأكيد. افتح تعديل الأوردر وحدد الشحن.');
-       next.shipping=rate;
+       // Assign the carrier now; if the exact Tala rate is unknown, keep the existing fee until staff review.
+       if(rate!==undefined)next.shipping=rate;
       }else if(order.shippingCompany===talaExpress&&next.shippingCompany!==talaExpress){
        next.shipping=0;
       }
@@ -482,6 +482,7 @@ export default function Page(){
        {editing.shippingCompany&&!registeredCompanies.includes(editing.shippingCompany)&&<option value={'company:'+editing.shippingCompany}>{t(editing.shippingCompany)}</option>}
        <option value="self">{t("بدون شركة شحن — توصيل بنفسي")}</option>
       </select>
+      <small className="muted">تقدر تحفظ الأوردر بدون شركة شحن وتضيف الشركة بعدين من جدول الطلبات أو تعديل الأوردر. تغيير الشركة لا ينشئ بوليصة شحن تلقائيًا.</small>
      </label>
     </section>
     {(editing.id||deliveryChosen||!editing.shippingCompany)&&<>
