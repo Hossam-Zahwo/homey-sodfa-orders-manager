@@ -46,7 +46,9 @@ export async function POST(request:Request){
   const expected="v1."+createHmac("sha256",secret).update(ts+"."+raw).digest("hex");
   const a=Buffer.from(signature),b=Buffer.from(expected);
   if(a.length!==b.length||!timingSafeEqual(a,b))return deny("INVALID_SIGNATURE",401);
-  const parsed=Input.safeParse(JSON.parse(raw));
+  let rawBody:unknown;
+  try { rawBody=JSON.parse(raw); } catch { return deny('INVALID_JSON',400); }
+  const parsed=Input.safeParse(rawBody);
   if(!parsed.success)return deny("INVALID_PAYLOAD",400);
   const data=parsed.data;
   const dbUrl=process.env.DATABASE_URL;
