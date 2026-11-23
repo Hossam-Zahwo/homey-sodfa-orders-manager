@@ -269,8 +269,9 @@ export default function Page(){
    const estimatedNet=(subset:Order[])=>subset.reduce((n,o)=>n+Math.max(0,collectionFromCustomer(o)-feeFor(o)),0);
    const missingRate=entries.filter(o=>estimatedFee(o)===null&&actualFee(o)===null).length;
    const received=entries.reduce((n,o)=>n+(o.carrierReceived??0),0);
-   const deliveredNet=delivered.reduce((n,o)=>n+(company===talaExpress&&o.talaCustomerDue!=null?o.talaCustomerDue:Math.max(0,collectionFromCustomer(o)-feeFor(o))),0);
-   return {company,entries,delivered,pending,failed,grossDelivered:gross(delivered),grossPending:gross(pending),grossFailed:gross(failed),deliveredNet,pendingNet:estimatedNet(pending),feesDelivered:delivered.reduce((n,o)=>n+feeFor(o),0),received,missingRate};
+   const deliveredNet=delivered.filter(o=>!missingFinancialAmount(o)).reduce((n,o)=>n+(company===talaExpress&&o.talaCustomerDue!=null?o.talaCustomerDue:Math.max(0,collectionFromCustomer(o)-feeFor(o))),0);
+   const reviewCount=delivered.filter(o=>missingFinancialAmount(o)||financialWarnings(o).some(w=>w.includes('صافي المستحق'))).length;
+   return {company,entries,delivered,pending,failed,grossDelivered:gross(delivered),grossPending:gross(pending),grossFailed:gross(failed),deliveredNet,pendingNet:estimatedNet(pending),feesDelivered:delivered.reduce((n,o)=>n+feeFor(o),0),received,missingRate,reviewCount};
   });
   return <section className="panel tracking-overview carrier-settlement" aria-label="تفاصيل حسابات شركات الشحن">
    <h2>حساب كل شركة شحن — المسلّم والمتوقع والمرتجعات</h2>
@@ -279,7 +280,7 @@ export default function Page(){
     <table className="table tracking-table carrier-settlement-table"><thead><tr>
      <th>شركة الشحن</th><th>كل الطلبات</th><th>المسلّم</th><th>المنتظر</th><th>الملغي/المرتجع</th><th>تحصيل المسلّم</th><th>شحن المسلّم (فعلي/تقديري)</th><th>صافي المسلّم</th><th>قيمة المنتظر</th><th>صافي المنتظر المتوقع</th><th>قيمة الملغي/المرتجع</th><th>المستلم المسجل</th><th>المتبقي التقريبي من المسلّم</th>
     </tr></thead><tbody>{data.map(x=><tr key={x.company}>
-     <th scope="row">{x.company}</th><td>{number(x.entries.length)}</td><td>{number(x.delivered.length)}</td><td>{number(x.pending.length)}</td><td>{number(x.failed.length)}</td><td>{money(x.grossDelivered)}</td><td>{money(x.feesDelivered)}</td><td><strong>{money(x.deliveredNet)}</strong></td><td>{money(x.grossPending)}</td><td>{money(x.pendingNet)}</td><td>{money(x.grossFailed)}</td><td>{money(x.received)}</td><td><strong>{money(Math.max(0,x.deliveredNet-x.received))}</strong></td>
+     <th scope="row">{x.company}</th><td>{number(x.entries.length)}</td><td>{number(x.delivered.length)}</td><td>{number(x.pending.length)}</td><td>{number(x.failed.length)}</td><td>{money(x.grossDelivered)}</td><td>{money(x.feesDelivered)}</td><td><strong>{money(x.deliveredNet)}</strong>{x.reviewCount>0&&<small className="finance-warning">+ {number(x.reviewCount)} طلب يحتاج مراجعة</small>}</td><td>{money(x.grossPending)}</td><td>{money(x.pendingNet)}</td><td>{money(x.grossFailed)}</td><td>{money(x.received)}</td><td><strong>{money(Math.max(0,x.deliveredNet-x.received))}</strong></td>
     </tr>)}</tbody></table>
    </div>
    <p className="muted">تقدر تسكرول الجدول يمين وشمال على الموبايل لعرض كل الأعمدة بدون قصّ بيانات. «المتبقي التقريبي من المسلّم» = صافي الطلبات المسلّمة ناقص المستلم المسجل يدويًا؛ مش مديونية مؤكدة قبل مطابقة كشوف التحويلات. لا تُحتسب الطلبات الجديدة أو المرتجعة كأموال محصلة.</p>
@@ -292,7 +293,7 @@ export default function Page(){
       const fee=actual?o.talaDeliveryFees!:estimatedTalaFee(o.governorate,o.city);
       const due=o.status==='delivered'&&x.company===talaExpress&&o.talaCustomerDue!=null?o.talaCustomerDue:fee===null?null:Math.max(0,collectionFromCustomer(o)-fee);
       return <tr key={o.id}><td><button type="button" className="order-name-link" onClick={()=>setDetailOrderId(o.id)}>#{o.id.slice(0,8).toUpperCase()}</button></td>
-       <td>{t(statusLabels[o.status])}</td><td>{o.items.map(i=>i.name+' × '+i.quantity).join('، ')}</td><td>{o.governorate} / {o.city}</td><td>{money(collectionFromCustomer(o))}</td><td>{fee===null?'تحتاج تسعير':money(fee)}</td><td>{due===null?'—':money(due)}</td><td>{money(o.carrierReceived??0)}</td><td>{o.status!=='delivered'?'غير مسلّم':actual?'رسوم تالا المسجلة':'تقديري حسب المنطقة'}</td>
+       <td>{t(statusLabels[o.status])}</td><td>{o.items.map(i=>i.name+' × '+i.quantity).join('، ')}</td><td>{o.governorate} / {o.city}</td><td>{money(collectionFromCustomer(o))}</td><td>{fee===null?'تحتاج تسعير':money(fee)}</td><td>{missingFinancialAmount(o)?<span className="finance-review">يحتاج مراجعة</span>:due===null?'—':money(due)}{financialWarnings(o).length>0&&<small className="finance-warning" title={financialWarnings(o).join('؛ ')}>بيانات متعارضة</small>}</td><td>{money(o.carrierReceived??0)}</td><td>{o.status!=='delivered'?'غير مسلّم':actual?'رسوم تالا المسجلة':'تقديري حسب المنطقة'}</td>
       </tr>;
      })}</tbody></table>
     </div>
