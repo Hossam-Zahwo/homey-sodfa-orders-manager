@@ -238,7 +238,41 @@ export default function Page(){
    <div className="tracking-card tala-finance-pending"><span>{t("المبلغ قيد التحصيل حسب تالا")}</span><strong>{money(amounts.pending)}</strong></div>
    <div className="tracking-card tala-finance-fees"><span>{t("رسوم تالا المحصلة")}</span><strong>{money(amounts.fees)}</strong></div>
    <div className="tracking-card tala-finance-due"><span>{t("المستحق حسب تالا")}</span><strong>{money(amounts.due)}</strong></div>
+   <p className="muted" style={{gridColumn:'1 / -1'}}>هذه حقول مالية راجعة من تكامل تالا للطلبات المتزامنة فقط. «المبلغ المحصل» يعني ما حصّلته تالا من العميل، وليس ما حُوِّل لحسابك. «رسوم تالا المحصلة» حقل منفصل عن «رسوم الشحن»؛ صفر لا يعني إعفاءً من الشحن. وتحتاج التحويلات الفعلية إلى كشف تسوية.</p>
   </div></>;
+ }
+ function carrierFinanceBreakdown(rows:Order[]){
+  const companies=[...new Set(rows.map(o=>o.shippingCompany||'بدون شركة شحن'))].sort((a,b)=>a.localeCompare(b,'ar'));
+  const data=companies.map(company=>{
+   const entries=rows.filter(o=>(o.shippingCompany||'بدون شركة شحن')===company);
+   const delivered=entries.filter(o=>o.status==='delivered');
+   const pending=entries.filter(o=>!['delivered','cancelled','returned','refused'].includes(o.status));
+   const failed=entries.filter(o=>['cancelled','returned','refused'].includes(o.status));
+   const gross=(subset:Order[])=>subset.reduce((n,o)=>n+collectionFromCustomer(o),0);
+   const net=delivered.reduce((n,o)=>{
+    if(company===talaExpress&&o.talaStatusCode)return n+(o.talaCustomerDue??0);
+    return n+Math.max(0,collectionFromCustomer(o)-(company===talaExpress?o.shipping:0));
+   },0);
+   const received=entries.reduce((n,o)=>n+(o.carrierReceived??0),0);
+   return {company,entries,delivered,pending,failed,gross,grossDelivered:gross(delivered),grossPending:gross(pending),grossFailed:gross(failed),net,received};
+  });
+  return <section className="panel tracking-overview" aria-label="تفاصيل حسابات شركات الشحن">
+   <h2>تفصيل حساب كل شركة شحن</h2>
+   <p className="muted">الأرقام أدناه من الأوردرات المسجلة في المشروع للفترة المختارة. قيمة الطلبات ليست تحويلات بنكية، والطلبات غير المسلّمة ليست مستحقات مؤكدة. اختيار «بدون شركة شحن» لا يعني أن الأموال لدى شركة شحن.</p>
+   <div className="tracking-table-scroll" tabIndex={0}>
+    <table className="table tracking-table"><thead><tr>
+     <th>طريقة الشحن</th><th>عدد الطلبات</th><th>تم التسليم</th><th>قيد التنفيذ</th><th>ملغي/مرتجع/مرفوض</th><th>تحصيل الطلبات المسلّمة</th><th>صافي المسلّم المحسوب</th><th>قيمة قيد التنفيذ</th><th>قيمة غير المسلّم المغلق</th><th>استلمناه (مسجل يدويًا)</th>
+    </tr></thead><tbody>{data.map(x=><tr key={x.company}>
+     <th scope="row">{x.company}</th><td>{number(x.entries.length)}</td><td>{number(x.delivered.length)}</td><td>{number(x.pending.length)}</td><td>{number(x.failed.length)}</td>
+     <td>{money(x.grossDelivered)}</td><td>{money(x.net)}</td><td>{money(x.grossPending)}</td><td>{money(x.grossFailed)}</td><td>{money(x.received)}</td>
+    </tr>)}</tbody></table>
+   </div>
+   <details><summary>إزاي نفهم الأرقام دي؟</summary>
+    <p><strong>تحصيل المسلّم:</strong> قيمة الأوردرات التي حالتها «تم التسليم» قبل خصم رسوم تالا. <strong>صافي المسلّم:</strong> تحصيل المسلّم ناقص رسوم الشحن المسجلة لتالا، أو القيمة المسجلة من تالا نفسها عند توفرها؛ التوصيل بدون شركة أو عبر شركة أخرى لا نخصم له رسوم تالا.</p>
+    <p><strong>قيد التنفيذ:</strong> أوردرات جديدة أو قيد الشحن أو مؤجلة، وليست أموالًا محصلة. <strong>غير المسلّم المغلق:</strong> ملغي أو مرتجع أو مرفوض، لا يدخل في صافي المسلّم.</p>
+    <p><strong>استلمناه:</strong> المبلغ المدخل يدويًا في خانة مستلم من شركة الشحن؛ قد لا يمثل التحويلات الحقيقية إلا بعد المطابقة. في الطلبات الناقصة أو المسجلة بقيمة صفر يجب مراجعة التفاصيل قبل اعتماد كشف التسوية.</p>
+   </details>
+  </section>;
  }
  function salesSummary(rows:Order[]){
   const amounts=rows.reduce((sum,order)=>{
@@ -253,9 +287,10 @@ export default function Page(){
  function financeSummary(rows:Order[]){
   const amounts=totals(rows);
   return <div className="tracking-grid tracking-finance">
-   <div className="tracking-card tracking-partial"><span>{t("صافي المستحق بعد خصم شحن تالا")}</span><strong>{money(amounts.due)}</strong></div>
+   <div className="tracking-card tracking-partial" title="تقدير من كل الطلبات غير المغلقة، ويشمل الطلبات الجديدة وقيد الشحن، ولا يعني المبالغ التي تم تسليمها"><span>المستحق النظري لكل الطلبات (ليس المحصل فقط)</span><strong>{money(amounts.due)}</strong></div>
    <div className="tracking-card tracking-paid"><span>{t("المستلم من شركات الشحن")}</span><strong>{money(amounts.received)}</strong></div>
    <div className="tracking-card tracking-unpaid"><span>{t("المتبقي")}</span><strong>{money(amounts.remaining)}</strong></div>
+   <p className="muted" style={{gridColumn:'1 / -1'}}>هذه أرصدة نظرية من الأوردرات المسجلة؛ «المتبقي» لا يساوي بالضرورة مديونية شركات الشحن، لأنه قد يشمل أوردرات لم تُسلّم بعد. راجع جدول تفصيل كل شركة أدناه.</p>
   </div>;
  }
  function carrierTable(){
@@ -378,7 +413,7 @@ export default function Page(){
  {tab==='dashboard'&&<>
   {brand==='homey'&&<TalaShipments brand="homey" revision={0} orderIds={talaOrderIds}
    trackingOrders={talaTrackingOrders} openOrder={setDetailOrderId} onSettings={()=>openShippingIntegration(talaExpress)} dashboard/>}
-  <section className="panel tracking-overview"><h2>{t("المبيعات والشحن والتحصيل")}</h2>{salesSummary(periodOrders)}{financeSummary(periodOrders)}{brand==='homey'&&talaFinanceSummary(periodOrders)}</section>
+  <section className="panel tracking-overview"><h2>{t("المبيعات والشحن والتحصيل")}</h2>{salesSummary(periodOrders)}{financeSummary(periodOrders)}{brand==='homey'&&talaFinanceSummary(periodOrders)}</section>{carrierFinanceBreakdown(periodOrders)}
   <section className="panel tracking-overview">
    <h2>{t("حالات الشحن")}</h2><div className="tracking-grid tracking-shipping">{shippingStates.map(status=><button key={status} className={'tracking-card tracking-'+status} onClick={()=>showOrders(status)}><span>{t(statusLabels[status])}</span><strong>{number(periodOrders.filter(o=>o.status===status).length)}</strong></button>)}</div>
    <h2>{t("حالات التحصيل")}</h2><div className="tracking-grid tracking-finance">{collectionStates.map(state=><button key={state} className={'tracking-card tracking-'+state} onClick={()=>showOrders('all',state)}><span>{t(collectionLabels[state])}</span><strong>{number(periodOrders.filter(o=>collectionState(o)===state).length)}</strong></button>)}</div>
@@ -414,7 +449,7 @@ export default function Page(){
  {tab==='shipping-integrations'&&<ShippingIntegrations key={brand} brand={brand} companies={carrierNames} orders={brandOrders} openOrder={setDetailOrderId}
   initialCompany={shipmentDraft?.brand===brand?shipmentDraft.company:''}
   initialIds={shipmentDraft?.brand===brand?shipmentDraft.ids:[]}/>}
- {tab==='reports'&&<section className="panel"><div className="sectionhead"><h2>{t("تقرير الشحن والتحصيل")}</h2>{carrierSelect()}</div>{financeSummary(reportOrders)}
+ {tab==='reports'&&<section className="panel"><div className="sectionhead"><h2>{t("تقرير الشحن والتحصيل")}</h2>{carrierSelect()}</div>{financeSummary(reportOrders)}{carrierFinanceBreakdown(reportOrders)}
   <div className="tracking-report-bars">{shippingStates.map(status=>{
    const count=reportOrders.filter(o=>o.status===status).length;
    return <div key={status}><span>{t(statusLabels[status])}</span><progress value={count} max={reportOrders.length||1}/><strong>{number(count)}</strong></div>;
