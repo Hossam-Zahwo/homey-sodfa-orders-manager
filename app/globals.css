@@ -800,3 +800,26 @@ button.tracking-card:hover { border-color: currentColor; }
 .finance-review-box strong{display:block;font-size:14px;margin-bottom:5px}
 .finance-review-box ul{padding-inline-start:20px;margin:6px 0;line-height:1.75}
 .finance-review-box small{display:block;line-height:1.6}
+
+/* Selected-order money totals and row-level shipping reconciliation. */
+.selected-finance-summary{margin:0 0 15px;padding:15px;background:#f7faf6;border:1px solid #d9e5d8;border-radius:14px;display:grid;gap:10px;overflow:hidden}
+.selected-finance-heading{font-size:14px;color:#2b513a}
+.selected-finance-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.selected-finance-metrics>div{display:flex;flex-direction:column;gap:5px;min-width:0;background:#fff;border:1px solid #e4eae1;border-radius:11px;padding:13px}
+.selected-finance-metrics span{font-size:12px;color:#5b6e62;font-weight:700}
+.selected-finance-metrics strong{font-family:"Segoe UI",Tahoma,Arial,sans-serif;font-variant-numeric:tabular-nums;font-size:20px;color:#273f2f}
+.selected-finance-metrics small{color:#a16207;font-size:11px}
+.selected-finance-summary p{margin:0;font-size:12px;color:#718276;line-height:1.8}
+.order-finance-cell{min-width:115px;white-space:normal!important;line-height:1.6}
+.order-finance-cell strong{color:#315c3d}
+.finance-fee-estimate,.finance-fee-provider{display:block;white-space:nowrap;font-size:10px;font-weight:700}
+.finance-fee-estimate{color:#a16207}.finance-fee-provider{color:#377452}
+@media(max-width:760px){
+ .selected-finance-summary{padding:12px;margin-bottom:12px}
+ .selected-finance-metrics{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+ .selected-finance-metrics>div{padding:9px 7px}
+ .selected-finance-metrics span{font-size:10px}
+ .selected-finance-metrics strong{font-size:clamp(13px,3.2vw,18px)}
+ .selected-finance-summary p{font-size:11px}
+}
+@media(max-width:390px){.selected-finance-metrics{grid-template-columns:1fr}}
