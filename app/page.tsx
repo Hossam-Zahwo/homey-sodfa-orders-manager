@@ -620,7 +620,8 @@ export default function Page(){
        onChange={e=>{const value=e.target.value;setEditing(order=>order?{...order,manualTotal:null,manualCollection:value===''?null:Number(value)}:order)}}/>
       <small className="muted">{t("الإجمالي التلقائي شامل الشحن وبعد المدفوع مقدمًا")} {money(Math.max(0,calculatedTotal(editing)-editing.prepaid))}</small>
      </label>
-     {editing.shippingCompany===talaExpress&&<div><span>{t("صافي المستحق من تالا بعد الشحن")}</span><strong>{money(carrierAmounts(editing).due)}</strong></div>}
+     {editing.shippingCompany===talaExpress&&<div><span>{t("صافي المستحق من تالا بعد الشحن")}</span><strong>{missingFinancialAmount(editing)?'غير معروف — يحتاج مراجعة':money(carrierAmounts(editing).due)}</strong>{editing.talaDeliveryFees!=null&&<small className="muted">رسوم الشحن من تالا: {money(editing.talaDeliveryFees)} (بدل رسوم الطلب المسجلة: {money(editing.shipping)})</small>}</div>}
+     {editing.id&&financialWarnings(editing).length>0&&<div className="finance-review-box" role="status"><strong>راجع بيانات الأوردر المالية قبل الحفظ</strong><ul>{financialWarnings(editing).map((message,index)=><li key={index}>{message}</li>)}</ul><small>التصحيح لا يغير سعر المنتج أو تحصيل العميل تلقائيًا.</small></div>}
     </div>
     </section>
     {err&&<div className="notice error" role="alert">{t(err)}</div>}
