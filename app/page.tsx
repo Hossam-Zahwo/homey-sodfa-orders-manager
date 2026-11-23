@@ -277,12 +277,12 @@ export default function Page(){
    <p className="muted">«حودة» هو اسم العرض للطلبات المسجلة بدون شركة شحن. الرسوم التقديرية على طريقة تالا حسب المحافظة (82–142 جنيهًا) لا تغيّر بيانات الطلبات ولا تُعد كشف تسوية. تالا المباشر يُستخدم له المستحق ورسوم التوصيل المزامنان عند توفرهما.</p>
    <div className="tracking-table-scroll carrier-settlement-scroll" tabIndex={0} role="region" aria-label="الجدول المالي الكامل؛ مرّر أفقيًا لإظهار جميع الأعمدة">
     <table className="table tracking-table carrier-settlement-table"><thead><tr>
-     <th>شركة الشحن</th><th>كل الطلبات</th><th>المسلّم</th><th>المنتظر</th><th>الملغي/المرتجع</th><th>تحصيل المسلّم</th><th>شحن المسلّم (فعلي/تقديري)</th><th>صافي المسلّم</th><th>قيمة المنتظر</th><th>صافي المنتظر المتوقع</th><th>قيمة الملغي/المرتجع</th><th>المستلم المسجل</th>
+     <th>شركة الشحن</th><th>كل الطلبات</th><th>المسلّم</th><th>المنتظر</th><th>الملغي/المرتجع</th><th>تحصيل المسلّم</th><th>شحن المسلّم (فعلي/تقديري)</th><th>صافي المسلّم</th><th>قيمة المنتظر</th><th>صافي المنتظر المتوقع</th><th>قيمة الملغي/المرتجع</th><th>المستلم المسجل</th><th>المتبقي التقريبي من المسلّم</th>
     </tr></thead><tbody>{data.map(x=><tr key={x.company}>
-     <th scope="row">{x.company}</th><td>{number(x.entries.length)}</td><td>{number(x.delivered.length)}</td><td>{number(x.pending.length)}</td><td>{number(x.failed.length)}</td><td>{money(x.grossDelivered)}</td><td>{money(x.feesDelivered)}</td><td><strong>{money(x.deliveredNet)}</strong></td><td>{money(x.grossPending)}</td><td>{money(x.pendingNet)}</td><td>{money(x.grossFailed)}</td><td>{money(x.received)}</td>
+     <th scope="row">{x.company}</th><td>{number(x.entries.length)}</td><td>{number(x.delivered.length)}</td><td>{number(x.pending.length)}</td><td>{number(x.failed.length)}</td><td>{money(x.grossDelivered)}</td><td>{money(x.feesDelivered)}</td><td><strong>{money(x.deliveredNet)}</strong></td><td>{money(x.grossPending)}</td><td>{money(x.pendingNet)}</td><td>{money(x.grossFailed)}</td><td>{money(x.received)}</td><td><strong>{money(Math.max(0,x.deliveredNet-x.received))}</strong></td>
     </tr>)}</tbody></table>
    </div>
-   <p className="muted">تقدر تسكرول الجدول يمين وشمال على الموبايل لعرض كل الأعمدة بدون قصّ بيانات. «المستلم المسجل» ليس كشف تحويلات بنكية. أي رسوم غير متوفرة أو حالات تسليم ناقصة تحتاج مراجعة قبل تأكيد المستحقات.</p>
+   <p className="muted">تقدر تسكرول الجدول يمين وشمال على الموبايل لعرض كل الأعمدة بدون قصّ بيانات. «المتبقي التقريبي من المسلّم» = صافي الطلبات المسلّمة ناقص المستلم المسجل يدويًا؛ مش مديونية مؤكدة قبل مطابقة كشوف التحويلات. لا تُحتسب الطلبات الجديدة أو المرتجعة كأموال محصلة.</p>
    {data.map(x=><details className="carrier-order-details" key={x.company}>
     <summary>{x.company} — تفاصيل كل الأوردرات ({number(x.entries.length)})</summary>
     <div className="tracking-table-scroll carrier-settlement-scroll" tabIndex={0}>
