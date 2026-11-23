@@ -11,7 +11,11 @@ const customerFields:Record<string,string>={alternatePhone:'alternate_phone',cre
 function fromDb<T>(row:Record<string,unknown>,fields:Record<string,string>):T{
  const reverse=Object.fromEntries(Object.entries(fields).map(([a,b])=>[b,a]));
  const obj=Object.fromEntries(Object.entries(row).map(([k,v])=>[reverse[k]||k,v]));
- for(const k of ['prepaid','shipping','discount','carrierReceived','version','talaDeliveredAmount','talaDeliveryFees','talaCustomerDue','talaCollectedAmount','talaPendingCollectionAmount','talaCollectedFees'])if(k in obj)obj[k]=Number(obj[k]??0);
+ for(const k of ['prepaid','shipping','discount','carrierReceived','version'])if(k in obj)obj[k]=Number(obj[k]??0);
+// Tala amounts are nullable. Zero is a meaningful provider value and must never
+// be substituted for SQL NULL, otherwise missing financial data looks settled.
+for(const k of ['talaDeliveredAmount','talaDeliveryFees','talaCustomerDue','talaCollectedAmount','talaPendingCollectionAmount','talaCollectedFees'])
+  if(k in obj)obj[k]=obj[k]===null||obj[k]===undefined?null:Number(obj[k]);
  for(const k of ['manualTotal','manualCollection'])if(obj[k]!=null)obj[k]=Number(obj[k]);
  for(const k of ['enteredAt','createdAt','updatedAt','deletedAt'])if(obj[k] instanceof Date)obj[k]=(obj[k] as Date).toISOString();
  if('deletedAt' in obj && obj.deletedAt==null)obj.deletedAt='';
@@ -78,7 +82,11 @@ export async function saveOrder(input:Order,creationRequestId?:string):Promise<O
    customer_name=${input.customerName.trim()},phone=${input.phone},alternate_phone=${input.alternatePhone||''},
    governorate=${input.governorate||''},city=${input.city||''},address=${input.address||''},
    source=${input.source||''},payment_method=${input.paymentMethod||''},
-   prepaid=${input.prepaid},shipping=${input.shipping},discount=${input.discount},
+   prepaid=${input.prepaid},
+   shipping=CASE WHEN ${input.shippingCompany=== 'تالا إكسبريس'} THEN COALESCE(
+    (SELECT provider_delivery_fees FROM public.tala_order_shipments WHERE order_id=${input.id}::uuid),
+    ${input.shipping}::numeric) ELSE ${input.shipping}::numeric END,
+   discount=${input.discount},
    manual_collection=CASE WHEN ${input.manualCollection!==undefined} THEN ${input.manualCollection??null}::numeric ELSE manual_collection END,
    manual_total=CASE WHEN ${input.manualTotal!==undefined} THEN ${input.manualTotal??null}::numeric ELSE manual_total END,
    items=${JSON.stringify(input.items)}::jsonb,status=${input.status},

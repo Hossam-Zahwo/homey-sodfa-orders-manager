@@ -67,7 +67,7 @@ export function OrderDetails({order,close,edit,print,prepare}:Props){
     <h3><Package size={17}/>{t('المنتجات')}</h3>
     <div className="order-summary-items">
      {order.items.map((item,index)=><div key={index}>
-      <span>{item.name}<small dir="ltr">× {item.quantity}</small></span><strong>{money(item.price*item.quantity)}</strong>
+      <span>{item.name}<small dir="ltr">× {item.quantity}</small></span><strong>{item.price===0&&collectionFromCustomer(order)>0?'سعر المنتج غير محفوظ':money(item.price*item.quantity)}</strong>
      </div>)}
     </div>
    </section>
@@ -75,9 +75,10 @@ export function OrderDetails({order,close,edit,print,prepare}:Props){
     <h3>{t('الشحن والتحصيل')}</h3>
     {financialWarnings(order).length>0&&<div className="finance-review-box" role="status"><strong>مراجعة مالية مطلوبة</strong><ul>{financialWarnings(order).map((warning,index)=><li key={index}>{warning}</li>)}</ul><small>البيانات الأصلية لم تتغير؛ راجع أسعار المنتجات ومبلغ التحصيل ورسوم الشحن قبل التسوية.</small></div>}
     <dl>
-     <dt>{t('تكلفة الشحن')}</dt><dd>{money(order.shipping)}</dd>
+     <dt>{t('تكلفة الشحن')}</dt><dd>{money(order.shipping)}{order.shippingCompany==='تالا إكسبريس'&&order.talaDeliveryFees!=null&&<small className="muted"> (حسب تالا)</small>}</dd>
      <dt>{t('الإجمالي')}</dt><dd>{money(totalOf(order))}</dd>
-     <dt>{t('التحصيل من العميل')}</dt><dd>{money(collectionFromCustomer(order))}</dd>
+     <dt>{t('التحصيل من العميل')}</dt><dd>{missingFinancialAmount(order)?'غير معروف — يحتاج مراجعة':money(collectionFromCustomer(order))}</dd>
+     {order.shippingCompany==='تالا إكسبريس'&&order.talaCustomerDue!=null&&<><dt>صافي المستحق حسب تالا</dt><dd>{money(order.talaCustomerDue)}</dd></>}
      {order.shippingCompany&&<><dt>{t('المستلم من شركات الشحن')}</dt><dd>{money(due.received)}</dd>
       <dt>{t('المتبقي')}</dt><dd>{missingFinancialAmount(order)?'غير معروف — يحتاج مراجعة':money(due.remaining)}</dd></>}
     </dl>
