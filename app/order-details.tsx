@@ -3,7 +3,7 @@
 import {Edit3,Package,Printer,Truck,X} from 'lucide-react';
 import {useEffect,useState} from 'react';
 import {useLanguage,useTranslation} from './language';
-import {carrierAmounts,collectionFromCustomer,collectionLabels,collectionState} from '@/lib/carrier-tracking';
+import {carrierAmounts,collectionFromCustomer,collectionLabels,collectionState,financialWarnings,missingFinancialAmount} from '@/lib/carrier-tracking';
 import {canPrepareShipment} from '@/lib/shipping-handoff';
 import {statusLabels,totalOf,type Order} from '@/lib/types';
 
@@ -73,12 +73,13 @@ export function OrderDetails({order,close,edit,print,prepare}:Props){
    </section>
    <section className="order-summary-group order-summary-money">
     <h3>{t('الشحن والتحصيل')}</h3>
+    {financialWarnings(order).length>0&&<div className="finance-review-box" role="status"><strong>مراجعة مالية مطلوبة</strong><ul>{financialWarnings(order).map((warning,index)=><li key={index}>{warning}</li>)}</ul><small>البيانات الأصلية لم تتغير؛ راجع أسعار المنتجات ومبلغ التحصيل ورسوم الشحن قبل التسوية.</small></div>}
     <dl>
      <dt>{t('تكلفة الشحن')}</dt><dd>{money(order.shipping)}</dd>
      <dt>{t('الإجمالي')}</dt><dd>{money(totalOf(order))}</dd>
      <dt>{t('التحصيل من العميل')}</dt><dd>{money(collectionFromCustomer(order))}</dd>
      {order.shippingCompany&&<><dt>{t('المستلم من شركات الشحن')}</dt><dd>{money(due.received)}</dd>
-      <dt>{t('المتبقي')}</dt><dd>{money(due.remaining)}</dd></>}
+      <dt>{t('المتبقي')}</dt><dd>{missingFinancialAmount(order)?'غير معروف — يحتاج مراجعة':money(due.remaining)}</dd></>}
     </dl>
    </section>
    {order.notes&&<section className="order-summary-group"><h3>{t('ملاحظات الأوردر')}</h3><p>{order.notes}</p></section>}
