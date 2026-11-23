@@ -792,3 +792,11 @@ button.tracking-card:hover { border-color: currentColor; }
 .carrier-order-details summary{cursor:pointer;font-weight:750;color:#314b37;line-height:1.6}
 .carrier-order-details[open] summary{margin-bottom:12px}
 @media print{.app .header{position:static!important;box-shadow:none!important}}
+
+/* Financial exceptions are distinct from zero amounts and never silently auto-correct saved data. */
+.finance-review{display:inline-block;color:#9a3412;font-weight:800;line-height:1.6;white-space:normal}
+.finance-warning{display:block;color:#a16207;font-size:11px;font-weight:750;white-space:normal;line-height:1.5;margin-top:3px}
+.finance-review-box{background:#fff8e7;border:1px solid #efd49f;border-radius:12px;padding:12px 14px;margin:9px 0 12px;color:#78511c}
+.finance-review-box strong{display:block;font-size:14px;margin-bottom:5px}
+.finance-review-box ul{padding-inline-start:20px;margin:6px 0;line-height:1.75}
+.finance-review-box small{display:block;line-height:1.6}
