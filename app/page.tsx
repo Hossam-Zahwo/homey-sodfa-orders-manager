@@ -22,6 +22,20 @@ import {HomeyLogo} from '@/components/homey-logo';
 
 import {carrierAmounts,closedWithoutDelivery,collectionFromCustomer,productRevenue,collectionLabels,collectionState,collectionStates,shippingStates,type CollectionState} from '@/lib/carrier-tracking';
 
+// Financial reporting is deliberately read-only. Rates are estimates, never provider settlement records.
+const displayCarrier=(name?:string)=>name?.trim()||'حودة';
+const estimatedTalaFee=(governorate:string,city:string):number|null=>{
+ const g=governorate.trim(),c=city.trim();
+ if(g==='القاهرة'||g==='الجيزة'){
+  if(g==='الجيزة'&&/اكتوبر|أكتوبر|الشيخ زايد|الصف|أطفيح|الواحات|البدرشين/i.test(c))return 87;
+  return 82;
+ }
+ if(['الإسكندرية','البحيرة','الدقهلية','الغربية','المنوفية','كفر الشيخ','دمياط','بورسعيد','الإسماعيلية','السويس','الشرقية','القليوبية'].includes(g))return 92;
+ if(['مطروح','جنوب سيناء','البحر الأحمر'].includes(g))return 142;
+ if(['الفيوم','بني سويف','المنيا'].includes(g))return 112;
+ if(['أسيوط','سوهاج','قنا','الأقصر','أسوان','الوادي الجديد'].includes(g))return 122;
+ return null;
+};
 type Tab='dashboard'|'orders'|'carriers'|'shipping-integrations'|'customers'|'reports'|'settings';
 const newOrder=(brand:Brand):Order=>({id:'',creationRequestId:crypto.randomUUID(),brand,createdAt:new Date().toLocaleDateString('en-CA'),updatedAt:'',version:0,customerName:'',phone:'',alternatePhone:'',governorate:'',city:'',address:'',source:'',paymentMethod:'الدفع عند الاستلام',prepaid:0,shipping:0,discount:0,items:[{name:'',sku:'',quantity:1,price:0}],status:'new',notes:'',assignedTo:'',deletedAt:''});
 const newCustomer=(brand:Brand):Customer=>({id:'',brand,name:'',phone:'',alternatePhone:'',governorate:'',city:'',address:'',notes:'',createdAt:'',updatedAt:'',deletedAt:''});
@@ -146,10 +160,10 @@ export default function Page(){
  const talaTrackingOrders=new Map(talaOrders.flatMap(order=>order.talaTrackingCode?[[order.talaTrackingCode,order.id] as const]:[]));
  const canRetryTala=Boolean(editing?.id&&editing.brand==='homey'&&editing.shippingCompany===talaExpress&&editing.talaDispatchState==='review'&&!closedWithoutDelivery(editing)&&editing.status!=='delivered');
  const periodOrders=brandOrders.filter(o=>inPeriod(o.enteredAt||o.createdAt));
- const matchesCarrier=(o:Order)=>!carrierFilter||(o.shippingCompany||'')===carrierFilter;
+ const matchesCarrier=(o:Order)=>!carrierFilter||displayCarrier(o.shippingCompany)===carrierFilter;
  const visible=periodOrders.filter(o=>matchesCarrier(o)&&(collectionFilter==='all'||collectionState(o)===collectionFilter)&&(tab!=='orders'||!unprintedOnly||!printed.has('order:'+o.id))&&(filter==='all'||(filter==='active'?o.status!=='cancelled':o.status===filter))&&[o.customerName,o.phone,o.id,o.address,o.items.map(i=>i.name).join(' ')].join(' ').toLowerCase().includes(search.toLowerCase()));
  const registeredCompanies=[...shippingCompanies].sort((a,b)=>a.localeCompare(b,'ar'));
- const carrierNames=[...new Set([...registeredCompanies,...brandOrders.flatMap(o=>o.shippingCompany?[o.shippingCompany]:[])])].sort((a,b)=>a.localeCompare(b,'ar'));
+ const carrierNames=[...new Set([...registeredCompanies,...brandOrders.map(o=>displayCarrier(o.shippingCompany))])].sort((a,b)=>a.localeCompare(b,'ar'));
  const reportOrders=periodOrders.filter(matchesCarrier);
  const totals=(rows:Order[])=>rows.reduce((acc,o)=>{
   const {due,received,remaining}=carrierAmounts(o);
@@ -157,7 +171,7 @@ export default function Page(){
  },{due:0,received:0,remaining:0});
  const carrierGroups=new Map<string,Order[]>(carrierNames.filter(name=>!carrierFilter||carrierFilter===name).map(name=>[name,[]]));
  for(const order of reportOrders){
-  const key=order.shippingCompany||'بدون شركة محددة';
+  const key=displayCarrier(order.shippingCompany);
   const rows=carrierGroups.get(key)??[];
   rows.push(order);
   carrierGroups.set(key,rows);
@@ -242,36 +256,47 @@ export default function Page(){
   </div></>;
  }
  function carrierFinanceBreakdown(rows:Order[]){
-  const companies=[...new Set(rows.map(o=>o.shippingCompany||'بدون شركة شحن'))].sort((a,b)=>a.localeCompare(b,'ar'));
+  const companies=[...new Set(rows.map(o=>displayCarrier(o.shippingCompany)))].sort((a,b)=>a.localeCompare(b,'ar'));
   const data=companies.map(company=>{
-   const entries=rows.filter(o=>(o.shippingCompany||'بدون شركة شحن')===company);
+   const entries=rows.filter(o=>displayCarrier(o.shippingCompany)===company);
    const delivered=entries.filter(o=>o.status==='delivered');
    const pending=entries.filter(o=>!['delivered','cancelled','returned','refused'].includes(o.status));
    const failed=entries.filter(o=>['cancelled','returned','refused'].includes(o.status));
    const gross=(subset:Order[])=>subset.reduce((n,o)=>n+collectionFromCustomer(o),0);
-   const net=delivered.reduce((n,o)=>{
-    if(company===talaExpress&&o.talaStatusCode)return n+(o.talaCustomerDue??0);
-    return n+Math.max(0,collectionFromCustomer(o)-(company===talaExpress?o.shipping:0));
-   },0);
+   const estimatedFee=(o:Order)=>estimatedTalaFee(o.governorate,o.city);
+   const actualFee=(o:Order)=>company===talaExpress?(o.talaDeliveryFees??null):null;
+   const feeFor=(o:Order)=>actualFee(o)??estimatedFee(o)??0;
+   const estimatedNet=(subset:Order[])=>subset.reduce((n,o)=>n+Math.max(0,collectionFromCustomer(o)-feeFor(o)),0);
+   const missingRate=entries.filter(o=>estimatedFee(o)===null&&actualFee(o)===null).length;
    const received=entries.reduce((n,o)=>n+(o.carrierReceived??0),0);
-   return {company,entries,delivered,pending,failed,gross,grossDelivered:gross(delivered),grossPending:gross(pending),grossFailed:gross(failed),net,received};
+   const deliveredNet=delivered.reduce((n,o)=>n+(company===talaExpress&&o.talaCustomerDue!=null?o.talaCustomerDue:Math.max(0,collectionFromCustomer(o)-feeFor(o))),0);
+   return {company,entries,delivered,pending,failed,grossDelivered:gross(delivered),grossPending:gross(pending),grossFailed:gross(failed),deliveredNet,pendingNet:estimatedNet(pending),feesDelivered:delivered.reduce((n,o)=>n+feeFor(o),0),received,missingRate};
   });
-  return <section className="panel tracking-overview" aria-label="تفاصيل حسابات شركات الشحن">
-   <h2>تفصيل حساب كل شركة شحن</h2>
-   <p className="muted">الأرقام أدناه من الأوردرات المسجلة في المشروع للفترة المختارة. قيمة الطلبات ليست تحويلات بنكية، والطلبات غير المسلّمة ليست مستحقات مؤكدة. اختيار «بدون شركة شحن» لا يعني أن الأموال لدى شركة شحن.</p>
-   <div className="tracking-table-scroll" tabIndex={0}>
-    <table className="table tracking-table"><thead><tr>
-     <th>طريقة الشحن</th><th>عدد الطلبات</th><th>تم التسليم</th><th>قيد التنفيذ</th><th>ملغي/مرتجع/مرفوض</th><th>تحصيل الطلبات المسلّمة</th><th>صافي المسلّم المحسوب</th><th>قيمة قيد التنفيذ</th><th>قيمة غير المسلّم المغلق</th><th>استلمناه (مسجل يدويًا)</th>
+  return <section className="panel tracking-overview carrier-settlement" aria-label="تفاصيل حسابات شركات الشحن">
+   <h2>حساب كل شركة شحن — المسلّم والمتوقع والمرتجعات</h2>
+   <p className="muted">«حودة» هو اسم العرض للطلبات المسجلة بدون شركة شحن. الرسوم التقديرية على طريقة تالا حسب المحافظة (82–142 جنيهًا) لا تغيّر بيانات الطلبات ولا تُعد كشف تسوية. تالا المباشر يُستخدم له المستحق ورسوم التوصيل المزامنان عند توفرهما.</p>
+   <div className="tracking-table-scroll carrier-settlement-scroll" tabIndex={0} role="region" aria-label="الجدول المالي الكامل؛ مرّر أفقيًا لإظهار جميع الأعمدة">
+    <table className="table tracking-table carrier-settlement-table"><thead><tr>
+     <th>شركة الشحن</th><th>كل الطلبات</th><th>المسلّم</th><th>المنتظر</th><th>الملغي/المرتجع</th><th>تحصيل المسلّم</th><th>شحن المسلّم (فعلي/تقديري)</th><th>صافي المسلّم</th><th>قيمة المنتظر</th><th>صافي المنتظر المتوقع</th><th>قيمة الملغي/المرتجع</th><th>المستلم المسجل</th>
     </tr></thead><tbody>{data.map(x=><tr key={x.company}>
-     <th scope="row">{x.company}</th><td>{number(x.entries.length)}</td><td>{number(x.delivered.length)}</td><td>{number(x.pending.length)}</td><td>{number(x.failed.length)}</td>
-     <td>{money(x.grossDelivered)}</td><td>{money(x.net)}</td><td>{money(x.grossPending)}</td><td>{money(x.grossFailed)}</td><td>{money(x.received)}</td>
+     <th scope="row">{x.company}</th><td>{number(x.entries.length)}</td><td>{number(x.delivered.length)}</td><td>{number(x.pending.length)}</td><td>{number(x.failed.length)}</td><td>{money(x.grossDelivered)}</td><td>{money(x.feesDelivered)}</td><td><strong>{money(x.deliveredNet)}</strong></td><td>{money(x.grossPending)}</td><td>{money(x.pendingNet)}</td><td>{money(x.grossFailed)}</td><td>{money(x.received)}</td>
     </tr>)}</tbody></table>
    </div>
-   <details><summary>إزاي نفهم الأرقام دي؟</summary>
-    <p><strong>تحصيل المسلّم:</strong> قيمة الأوردرات التي حالتها «تم التسليم» قبل خصم رسوم تالا. <strong>صافي المسلّم:</strong> تحصيل المسلّم ناقص رسوم الشحن المسجلة لتالا، أو القيمة المسجلة من تالا نفسها عند توفرها؛ التوصيل بدون شركة أو عبر شركة أخرى لا نخصم له رسوم تالا.</p>
-    <p><strong>قيد التنفيذ:</strong> أوردرات جديدة أو قيد الشحن أو مؤجلة، وليست أموالًا محصلة. <strong>غير المسلّم المغلق:</strong> ملغي أو مرتجع أو مرفوض، لا يدخل في صافي المسلّم.</p>
-    <p><strong>استلمناه:</strong> المبلغ المدخل يدويًا في خانة مستلم من شركة الشحن؛ قد لا يمثل التحويلات الحقيقية إلا بعد المطابقة. في الطلبات الناقصة أو المسجلة بقيمة صفر يجب مراجعة التفاصيل قبل اعتماد كشف التسوية.</p>
-   </details>
+   <p className="muted">تقدر تسكرول الجدول يمين وشمال على الموبايل لعرض كل الأعمدة بدون قصّ بيانات. «المستلم المسجل» ليس كشف تحويلات بنكية. أي رسوم غير متوفرة أو حالات تسليم ناقصة تحتاج مراجعة قبل تأكيد المستحقات.</p>
+   {data.map(x=><details className="carrier-order-details" key={x.company}>
+    <summary>{x.company} — تفاصيل كل الأوردرات ({number(x.entries.length)})</summary>
+    <div className="tracking-table-scroll carrier-settlement-scroll" tabIndex={0}>
+     <table className="table carrier-settlement-table"><thead><tr><th>الطلب</th><th>الحالة</th><th>المنتجات</th><th>المحافظة / المنطقة</th><th>تحصيل العميل</th><th>رسوم الشحن</th><th>الصافي التقديري</th><th>المستلم</th><th>نوع الحساب</th></tr></thead><tbody>
+     {x.entries.map(o=>{
+      const actual=x.company===talaExpress&&o.talaDeliveryFees!=null;
+      const fee=actual?o.talaDeliveryFees!:estimatedTalaFee(o.governorate,o.city);
+      const due=o.status==='delivered'&&x.company===talaExpress&&o.talaCustomerDue!=null?o.talaCustomerDue:fee===null?null:Math.max(0,collectionFromCustomer(o)-fee);
+      return <tr key={o.id}><td><button type="button" className="order-name-link" onClick={()=>setDetailOrderId(o.id)}>#{o.id.slice(0,8).toUpperCase()}</button></td>
+       <td>{t(statusLabels[o.status])}</td><td>{o.items.map(i=>i.name+' × '+i.quantity).join('، ')}</td><td>{o.governorate} / {o.city}</td><td>{money(collectionFromCustomer(o))}</td><td>{fee===null?'تحتاج تسعير':money(fee)}</td><td>{due===null?'—':money(due)}</td><td>{money(o.carrierReceived??0)}</td><td>{o.status!=='delivered'?'غير مسلّم':actual?'رسوم تالا المسجلة':'تقديري حسب المنطقة'}</td>
+      </tr>;
+     })}</tbody></table>
+    </div>
+   </details>)}
   </section>;
  }
  function salesSummary(rows:Order[]){
@@ -298,7 +323,7 @@ export default function Page(){
    <thead><tr>{['شركة الشحن','لدى الشركة','تم التسليم','المرتجع','المستحق','المستلم','المتبقي'].map(label=><th key={label}>{t(label)}</th>)}</tr></thead>
    <tbody>{[...carrierGroups].map(([name,rows])=>{
     const amounts=totals(rows);
-    return <tr key={name}><th scope="row">{name===t("بدون شركة محددة")?name:<button className="btn tiny secondary" onClick={()=>showOrders('all','all',name)}>{name}</button>}</th>
+    return <tr key={name}><th scope="row">{name==='حودة'?name:<button className="btn tiny secondary" onClick={()=>showOrders('all','all',name)}>{name}</button>}</th>
      <td>{number(rows.filter(o=>o.status==='shipped').length)}</td><td>{number(rows.filter(o=>o.status==='delivered').length)}</td>
      <td>{number(rows.filter(o=>o.status==='returned').length)}</td><td>{money(amounts.due)}</td><td>{money(amounts.received)}</td><td>{money(amounts.remaining)}</td></tr>;
    })}</tbody>
@@ -515,7 +540,7 @@ export default function Page(){
        <option value="" disabled>{t("اختار شركة الشحن أولاً")}</option>
        {registeredCompanies.map(name=><option key={name} value={'company:'+name}>{t(name)}</option>)}
        {editing.shippingCompany&&!registeredCompanies.includes(editing.shippingCompany)&&<option value={'company:'+editing.shippingCompany}>{t(editing.shippingCompany)}</option>}
-       <option value="self">{t("بدون شركة شحن — توصيل بنفسي")}</option>
+       <option value="self">حودة — توصيل غير مباشر</option>
       </select>
       <small className="muted">تقدر تحفظ الأوردر بدون شركة شحن وتضيف الشركة بعدين من جدول الطلبات أو تعديل الأوردر. تغيير الشركة لا ينشئ بوليصة شحن تلقائيًا.</small>
      </label>
