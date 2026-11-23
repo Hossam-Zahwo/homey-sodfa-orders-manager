@@ -4,9 +4,9 @@ import {talaExpress} from './tala-shipping';
 
 export const shippingStates:Status[]=['shipped','delivered','postponed','cancelled','refused','returned'];
 export const collectionLabels={
- unpaid:'لم يتم التحصيل',
- partial:'تحصيل جزئي',
- paid:'تم التحصيل بالكامل',
+ unpaid:'لم نستلم من شركة الشحن',
+ partial:'استلام جزئي من الشركة',
+ paid:'تم الاستلام من الشركة',
 } as const;
 export type CollectionState=keyof typeof collectionLabels;
 export const collectionStates:CollectionState[]=['unpaid','partial','paid'];
